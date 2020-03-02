@@ -1,0 +1,30 @@
+name: C++ CI
+
+on: [push]
+
+jobs:
+  build:
+    name: Build project
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v2
+
+    - name: Install build tools
+      run: |
+        sudo apt update
+        sudo apt install g++ make pkg-config
+
+    - name: Build using Makefile
+      run: make
+
+    - name: Run tests
+      run: echo "No tests have been setup!"
+
+    - name: Upload build artifact
+      uses: actions/upload-artifact@v1.0.0
+      with:
+        name: ubuntu-x86_64-archipelago
+        path: dist/
