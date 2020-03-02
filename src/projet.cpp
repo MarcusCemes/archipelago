@@ -1,3 +1,6 @@
+// archipelago - projet.cpp
+// Program entry point
+
 #include <iostream>
 
 using namespace std;
