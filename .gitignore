@@ -37,3 +37,6 @@ dist/
 
 # Segmentation fault dumps
 *.stackdump
+
+# OSX
+.DS_Store
