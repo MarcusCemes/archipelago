@@ -4,6 +4,11 @@
 #ifndef MODEL_TOWN_H
 #define MODEL_TOWN_H
 
+namespace town {
+
 // TODO
+
+}
+
 
 #endif
