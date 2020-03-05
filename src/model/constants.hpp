@@ -1,8 +1,10 @@
 // archipelago - model/constants.hpp
 // Global program constants
 
+#ifndef MODEL_CONSTANTS_H
+#define MODEL_CONSTANTS_H
 
-/* NODES */
+/* === NODES === */
 
 /**  Initial town dimension */
 constexpr double DIM_MAX(1000.);
@@ -21,8 +23,7 @@ constexpr unsigned MAX_LINK(3);
 /** Specifies a `null` value for link connections */
 constexpr unsigned NO_LINK(static_cast<unsigned>(-1));
 
-
-/* TRAVEL */
+/* === TRAVEL === */
 
 /** Travelling speed */
 constexpr double DEFAULT_SPEED(5.);
@@ -31,8 +32,7 @@ constexpr double FAST_SPEED(20.);
 /** Constant for infinite travel time */
 constexpr double INFINITE_TIME(1e100);
 
-
-/* GRAPHICAL INTERFACE */
+/* === GRAPHICAL INTERFACE === */
 
 /** Inital canvas size (window size) */
 constexpr unsigned DEFAULT_DRAWING_SIZE(800);
@@ -43,3 +43,5 @@ constexpr double DELTA_ZOOM(0.2);
 constexpr double MAX_ZOOM(3.);
 /** Maximum zoom setting */
 constexpr double MIN_ZOOM(0.2);
+
+#endif

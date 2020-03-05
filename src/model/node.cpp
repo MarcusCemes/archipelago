@@ -5,7 +5,6 @@
 
 #include "node.hpp"
 
-
 /* === CLASSES === */
 
 Node::Node(int initialUid, Position initialPosition, int initialCapacity) {
@@ -27,15 +26,15 @@ int Node::getRadius() { return sqrt(capacity); }
 /* SUBCLASSES */
 
 Housing::Housing(int initialUid, Position initialPosition, int initalCapacity)
- : Node(initialUid, initialPosition, initalCapacity) {}
+    : Node(initialUid, initialPosition, initalCapacity) {}
 NodeType Housing::getType() { return HOUSING; }
 
-
- Transport::Transport(int initialUid, Position initialPosition, int initalCapacity)
- : Node(initialUid, initialPosition, initalCapacity) {}
+Transport::Transport(int initialUid, Position initialPosition,
+                     int initalCapacity)
+    : Node(initialUid, initialPosition, initalCapacity) {}
 NodeType Transport::getType() { return TRANSPORT; }
 
-
-Production::Production(int initialUid, Position initialPosition, int initalCapacity)
- : Node(initialUid, initialPosition, initalCapacity) {}
+Production::Production(int initialUid, Position initialPosition,
+                       int initalCapacity)
+    : Node(initialUid, initialPosition, initalCapacity) {}
 NodeType Production::getType() { return PRODUCTION; }
