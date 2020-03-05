@@ -6,6 +6,8 @@
 
 #include "tools.hpp"
 
+namespace node {
+
 /* === CLASSES === */
 
 enum NodeType { HOUSING, TRANSPORT, PRODUCTION };
@@ -16,7 +18,7 @@ enum NodeType { HOUSING, TRANSPORT, PRODUCTION };
  */
 class Node {
  public:
-  Node(int uid, Position position, int capacity);
+  Node(int uid, tools::Position position, int capacity);
 
   /* Accessors/Manipulators */
 
@@ -24,8 +26,8 @@ class Node {
 
   int getUid();
 
-  Position getPos();
-  void setPos(Position position);
+  tools::Position getPos();
+  void setPos(tools::Position position);
 
   int getCapacity();
   void setCapacity(int capacity);
@@ -37,26 +39,28 @@ class Node {
  private:
   NodeType type;
   int uid;
-  Position position;
+  tools::Position position;
   int capacity;
 };
 
 class Housing : public Node {
  public:
-  Housing(int uid, Position position, int capacity);
+  Housing(int uid, tools::Position position, int capacity);
   NodeType getType();
 };
 
 class Transport : public Node {
  public:
-  Transport(int uid, Position position, int capacity);
+  Transport(int uid, tools::Position position, int capacity);
   NodeType getType();
 };
 
 class Production : public Node {
  public:
-  Production(int uid, Position position, int capacity);
+  Production(int uid, tools::Position position, int capacity);
   NodeType getType();
 };
+
+}
 
 #endif
