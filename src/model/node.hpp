@@ -1,28 +1,26 @@
 // archipelago - model/node.hpp
 // Classes and tools for node management
 
-#include "tools.hpp"
+#ifndef MODEL_NODE_H
+#define MODEL_NODE_H
 
+#include "tools.hpp"
 
 /* === CLASSES === */
 
-enum NodeType {
-  HOUSING,
-  TRANSPORT,
-  PRODUCTION
-};
+enum NodeType { HOUSING, TRANSPORT, PRODUCTION };
 
 /**
  * Abstract class that represents a node with a unique identifier,
  * a position and a capacity.
  */
 class Node {
-public:
+ public:
   Node(int uid, Position position, int capacity);
 
   /* Accessors/Manipulators */
 
-  virtual NodeType getType() = 0; // set by subclasses
+  virtual NodeType getType() = 0;  // set by subclasses
 
   int getUid();
 
@@ -36,7 +34,7 @@ public:
 
   int getRadius();
 
-private:
+ private:
   NodeType type;
   int uid;
   Position position;
@@ -44,19 +42,21 @@ private:
 };
 
 class Housing : public Node {
-public:
+ public:
   Housing(int uid, Position position, int capacity);
   NodeType getType();
 };
 
 class Transport : public Node {
-public:
+ public:
   Transport(int uid, Position position, int capacity);
   NodeType getType();
 };
 
 class Production : public Node {
-public:
+ public:
   Production(int uid, Position position, int capacity);
   NodeType getType();
 };
+
+#endif
