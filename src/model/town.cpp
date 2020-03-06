@@ -16,7 +16,6 @@ using namespace node;
 
 /* === INTERNAL DEFINITIONS AND PROTOTYPES === */
 
-
 namespace {
 /** Last selected type to be created */
 enum SelectedType { T_NULL, T_HOUSING, T_TRANSPORT, T_PRODUCTION, T_LINK };
@@ -34,11 +33,14 @@ void parseNode(vector<Node> &nodes, vector<string> &words,
 void parseLink(vector<Link> &links, vector<string> &words);
 string extractKey(string &word);
 string extractValue(string &word);
-bool startsWith(string &sample, string &term);
+bool startsWith(string sample, string term);
 int getFirstNumberIndex(string &word);
 }  // namespace
 
+
 /* === FUNCTIONS === */
+
+namespace town {
 
 /** Load and parse a town from a file */
 void loadFromFile(char *path) {
@@ -48,6 +50,8 @@ void loadFromFile(char *path) {
   } else {
     cerr << "File not open" << endl;
   }
+}
+
 }
 
 /* === INTERNAL FUNCTIONS === */
@@ -96,12 +100,12 @@ void parseLine(string &line, vector<Node> &nodes, vector<Link> &links,
   // Change the type selection
   if (startsWith(words[0], "nbNodeH")) {
     type = T_HOUSING;
-  // } else if (startsWith(words[0], "nbNodeT")) {
-  //   type = T_TRANSPORT;
-  // } else if (startsWith(words[0], "nbNodeP")) {
-  //   type = T_PRODUCTION;
-  // } else if (startsWith(words[0], "nbLink")) {
-  //   type = T_LINK;
+  } else if (startsWith(words[0], "nbNodeT")) {
+    type = T_TRANSPORT;
+  } else if (startsWith(words[0], "nbNodeP")) {
+    type = T_PRODUCTION;
+  } else if (startsWith(words[0], "nbLink")) {
+    type = T_LINK;
   } else {
     // create the selected type
     if (type == T_LINK) {

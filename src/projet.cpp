@@ -16,8 +16,8 @@ void init(char *file);
 /* === PROGRAM === */
 
 int main(int argc, char *argv[]) {
-  if (argc != 1) {
-    cerr << "No file input specified" << endl;
+  if (argc != 2) {
+    cerr << "Incorrect CLI usage" << endl;
     cerr << "Usage: " << argv[0] << " path/to/town.txt" << endl;
     return 1;
   }
