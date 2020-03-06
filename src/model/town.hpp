@@ -11,6 +11,8 @@
 
 namespace town {
 
+/* === CLASSES */
+
 /** A class that represents a Town */
 class Town {
  public:
@@ -27,6 +29,11 @@ class Town {
   std::vector<node::Node> nodes;
   std::vector<node::Link> links;
 };
+
+/* === FUNCTIONS === */
+
+/** Read the given file and parse the town */
+void loadFromFile(char *path);
 
 }  // namespace town
 
