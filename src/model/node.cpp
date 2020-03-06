@@ -17,16 +17,16 @@ Node::Node(NodeType nodeType, int initialUid, tools::Position initialPosition,
   capacity = initialCapacity;
 }
 
-int Node::getUid() { return uid; }
+int Node::getUid() const { return uid; }
 void Node::setUid(int newUid) { uid = newUid; }
 
-NodeType Node::getType() { return type; }
+NodeType Node::getType() const { return type; }
 void Node::setType(NodeType newType) { type = newType; }
 
-tools::Position Node::getPos() { return position; }
+tools::Position Node::getPos() const { return position; }
 void Node::setPos(tools::Position newPosition) { position = newPosition; }
 
-int Node::getCapacity() { return capacity; }
+int Node::getCapacity() const { return capacity; }
 void Node::setCapacity(int newCapacity) { capacity = newCapacity; }
 
-int Node::getRadius() { return sqrt(capacity); }
+int Node::getRadius() const { return sqrt(capacity); }
