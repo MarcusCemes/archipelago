@@ -18,13 +18,15 @@ enum NodeType { HOUSING, TRANSPORT, PRODUCTION };
  */
 class Node {
  public:
-  Node(int uid, tools::Position position, int capacity);
+  Node(NodeType type, int uid, tools::Position position, int capacity);
 
   /* Accessors/Manipulators */
 
-  virtual NodeType getType() = 0;  // set by subclasses
-
   int getUid();
+  void setUid(int uid);
+
+  NodeType getType();
+  void setType(NodeType type);
 
   tools::Position getPos();
   void setPos(tools::Position position);
@@ -41,24 +43,6 @@ class Node {
   int uid;
   tools::Position position;
   int capacity;
-};
-
-class Housing : public Node {
- public:
-  Housing(int uid, tools::Position position, int capacity);
-  NodeType getType();
-};
-
-class Transport : public Node {
- public:
-  Transport(int uid, tools::Position position, int capacity);
-  NodeType getType();
-};
-
-class Production : public Node {
- public:
-  Production(int uid, tools::Position position, int capacity);
-  NodeType getType();
 };
 
 }
