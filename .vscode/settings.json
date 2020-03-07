@@ -1,3 +1,9 @@
 {
-  "editor.rulers": [87]
+  "editor.rulers": [
+    87
+  ],
+  "files.associations": {
+    "**/blueprint-templates/**/*": "plaintext",
+    "fstream": "cpp"
+  }
 }
