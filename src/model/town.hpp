@@ -16,10 +16,10 @@ namespace town {
 /** A class that represents a Town */
 class Town {
  public:
+  Town(std::vector<node::Node> nodes = std::vector<node::Node>(),
+       std::vector<node::Link> links = std::vector<node::Link>());
 
-  Town(std::vector<node::Node> nodes, std::vector<node::Link> links);
   /* Accessors/Manipulators */
-
   std::vector<node::Node> getNodes();
   void setNodes(std::vector<node::Node> nodes);
 

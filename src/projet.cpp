@@ -9,19 +9,36 @@ using namespace std;
 
 /* === PROTOTYPES === */
 
+void init();
 void init(char *file);
+void start(town::Town &town);
 
 /* === PROGRAM === */
 
 int main(int argc, char *argv[]) {
-  if (argc != 2) {
-    cerr << "Incorrect CLI usage" << endl;
-    cerr << "Usage: " << argv[0] << " path/to/town.txt" << endl;
-    return 1;
+  if (argc >= 2) {
+    init(argv[1]);
+  } else {
+    init();
   }
 
-  town::Town(town::loadFromFile(argv[1]));
-  // TODO validate town
-
   return 0;
+}
+
+/** Launch the GUI with an empty town */
+void init() {
+  town::Town town;
+  start(town);
+}
+
+/** Create a town from saved file and launch the GUI */
+void init(char *file) {
+  town::Town town(town::loadFromFile(file));
+  // TODO validate town
+  start(town);
+}
+
+/** STUB - Launch the program with the passed town */
+void start(town::Town &town) {
+  town.getNodes();  // stub, hide -Wunusfed-parameter warning
 }
