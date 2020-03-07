@@ -2,8 +2,5 @@
   "editor.rulers": [
     87
   ],
-  "files.associations": {
-    "**/blueprint-templates/**/*": "plaintext",
-    "fstream": "cpp"
-  }
+  "C_Cpp.default.cppStandard": "c++11"
 }
