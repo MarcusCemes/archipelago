@@ -7,11 +7,9 @@
 
 using namespace std;
 
-
 /* === PROTOTYPES === */
 
 void init(char *file);
-
 
 /* === PROGRAM === */
 
@@ -22,6 +20,8 @@ int main(int argc, char *argv[]) {
     return 1;
   }
 
-  town::loadFromFile(argv[1]);
+  town::Town(town::loadFromFile(argv[1]));
+  // TODO validate town
+
   return 0;
 }

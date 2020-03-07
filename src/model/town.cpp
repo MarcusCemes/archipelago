@@ -23,7 +23,7 @@ enum SelectedType { T_NULL, T_HOUSING, T_TRANSPORT, T_PRODUCTION, T_LINK };
 constexpr char COMMENT_DELIMITER('#');
 constexpr char NULL_CHAR('\0');
 
-void parseTown(istream &stream);
+Town parseTown(istream &stream);
 bool readLine(istream &stream, string &line);
 void parseLine(string &line, vector<Node> &nodes, vector<Link> &links,
                SelectedType &selectedType);
@@ -31,34 +31,42 @@ void readWords(istream &stream, vector<string> &words);
 void parseNode(vector<Node> &nodes, vector<string> &words,
                SelectedType &selectedType);
 void parseLink(vector<Link> &links, vector<string> &words);
-string extractKey(string &word);
-string extractValue(string &word);
-bool startsWith(string sample, string term);
-int getFirstNumberIndex(string &word);
+string extractValue(const string word);
+int getFirstNumberIndex(const string word);
+bool startsWith(const string sample, const string term);
 }  // namespace
 
+/* === CLASSES === */
+
+Town::Town(vector<node::Node> nodes = vector<node::Node>(),
+           vector<node::Link> links = vector<node::Link>())
+    : nodes(nodes), links(links) {}
+
+std::vector<node::Node> Town::getNodes() { return nodes; }
+void Town::setNodes(vector<node::Node> newNodes) { nodes = newNodes; }
+
+std::vector<node::Link> Town::getLinks() { return links; }
+void Town::setLinks(vector<node::Link> newLinks) { links = newLinks; }
 
 /* === FUNCTIONS === */
 
-namespace town {
-
-/** Load and parse a town from a file */
-void loadFromFile(char *path) {
+/** Load and parse a town from a file. Returns an empty town on failure */
+town::Town town::loadFromFile(char *path) {
   ifstream file(path);
   if (file.is_open()) {
-    parseTown(file);
+    town::Town town(parseTown(file));
+    return town;
   } else {
     cerr << "File not open" << endl;
+    return town::Town();
   }
-}
-
 }
 
 /* === INTERNAL FUNCTIONS === */
 
 namespace {
 /** Parses a town from a multiline input stream */
-void parseTown(istream &stream) {
+Town parseTown(istream &stream) {
   vector<Node> nodes;
   vector<Link> links;
   string line;
@@ -68,6 +76,9 @@ void parseTown(istream &stream) {
   while (readLine(stream, line)) {
     parseLine(line, nodes, links, selectedType);
   }
+
+  Town town(nodes, links);
+  return town;
 }
 
 /**
@@ -80,7 +91,7 @@ bool readLine(istream &stream, string &line) {
   string rawLine;
   getline(stream, rawLine);
   size_t commentPos(rawLine.find(COMMENT_DELIMITER));
-  if (commentPos == string::npos) {
+  if (commentPos == string::npos) {  // index not found
     line = rawLine;
   } else {
     line = rawLine.substr(0, commentPos);
@@ -98,7 +109,7 @@ void parseLine(string &line, vector<Node> &nodes, vector<Link> &links,
   if (words.size() == 0) return;
 
   // Change the type selection
-  if (startsWith(words[0], "nbNodeH")) {
+  if (startsWith(words[0], "nbNodeL")) {
     type = T_HOUSING;
   } else if (startsWith(words[0], "nbNodeT")) {
     type = T_TRANSPORT;
@@ -126,6 +137,7 @@ void readWords(istream &stream, vector<string> &words) {
   }
 }
 
+/** Parses node creation parameters that are required to create a node */
 void parseNode(vector<Node> &nodes, vector<string> &words,
                SelectedType &selectedType) {
   int uid(stoi(extractValue(words[0])));
@@ -148,18 +160,13 @@ void parseLink(vector<Link> &links, vector<string> &words) {
   links.push_back({uid1, uid2});
 }
 
-string extractKey(string &word) {
-  int index(getFirstNumberIndex(word));
-  return word.substr(0, index);
-}
-
-string extractValue(string &word) {
+string extractValue(const string word) {
   int index(getFirstNumberIndex(word));
   return word.substr(index);
 }
 
 /** Get the index of the first numerical charcater in a string */
-int getFirstNumberIndex(string &word) {
+int getFirstNumberIndex(const string word) {
   size_t END(word.length());
   for (size_t i(0); i < END; ++i) {
     if (isdigit(word[i])) return i;
@@ -168,8 +175,9 @@ int getFirstNumberIndex(string &word) {
 }
 
 /** Check if a sample string starts with a character array */
-bool startsWith(string sample, string term) {
-  return sample > term;
+bool startsWith(const string sample, const string term) {
+  if (sample.length() < term.length()) return false;
+  return sample.substr(0, term.length()) == term;
 }
 
 }  // namespace
