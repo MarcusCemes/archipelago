@@ -23,8 +23,8 @@ fi
 cd "$(realpath "${BASH_SOURCE%/*}")"
 
 
-DEMO="demo"
-RESULT="results"
+DEMO="./demo"
+RESULTS="results"
 TESTS="tests"
 
 
@@ -72,30 +72,6 @@ function log_raw() {
 
 
 
-# === TEMP FILE === #
-
-TEMP_FILES=()
-
-# Remove temp files on quit
-function _cleanTempFiles {
-  if [ ${#TEMP_FILES[@]} -ne 0 ]; then
-    for file in ${TEMP_FILES[@]}; do
-      rm -f $file
-    done
-  fi
-}
-
-trap _cleanTempFiles EXIT
-
-# Create a temporary file, return path as global $RETURN
-function tempFile() {
-  RETURN=$(mktemp)
-  TEMP_FILES+=("$RETURN")
-}
-
-
-
-
 # === TESTER === #
 
 function runTests() {
@@ -110,9 +86,13 @@ function runTests() {
   local userProgram=$1
 
   if ! [ -r "$userProgram" ]; then
-    log "${ERROR} Compiled user program missing. This is likely a bug."
+    log "${ERROR} Missing the user program."
+    log "${INFO} Usage: script.sh path/to/program"
     return
   fi
+
+  chmod +x "$userProgram"
+  chmod +x "$DEMO"
 
   # Locate all tests
   local tests=()
@@ -155,20 +135,86 @@ function runTests() {
     local demoResult="$testDir/demo_output"
     local userResult="$testDir/user_output"
 
+
+    # Workaround: piping hides segfault message from terminal
     # Run demo program
-    if [ "$runDemo" = "1" ]; then
-      ./$DEMO console $test > $demoResult
-      sleep 0.5 # Allow CPU to "cool off"
-    fi
+    $DEMO console $test > $demoResult 2> /dev/null | cat
 
     # Run user program
-    $userProgram $test > $userResult
+    $userProgram $test > $userResult 2> /dev/null | cat
 
-    sleep 0.5 # Allow CPU to "cool off"
   done
 
   log "${OK} $nTests tests completed"
 
 }
 
+
+
+# === RESULTS === #
+
+# Analyse the user program's performance
+function anaylsePerformance() {
+
+  # Locate all results
+  local results=()
+  for result in ./${RESULTS}/* ; do
+    if [ -d "$result" ]; then
+      local results+=("$result")
+    fi
+  done
+
+  if [ ${#results[@]} -eq 0 ] || [ ${#results[@]} -eq 1 ] && ! [ -d ${#results[0]} ]; then
+    return
+  fi
+
+  # Collect point scoring
+  local points=0
+  local total=0
+
+  # Print helpful information about problems
+  local printIncorrect=0
+
+  # Table header
+  echo
+  log "   ${BOLD}-- Performance Analysis --${RESET}\n"
+  printf "  ${BOLD}%12s  %12s${RESET}\n" "Test" "Output";
+
+  for i in ${!results[@]}; do
+    local result=${results[$i]}
+
+    # Compare for exact results
+    cmp --silent "$result/demo_output" "$result/user_output"
+    if [ $? -eq 0 ]; then
+      local comparison="Correct"
+      local comparisonColour="${GREEN}"
+      ((points+=3))
+      ((total+=3))
+    else
+      local comparison="Incorrect"
+      local comparisonColour="$RED$BOLD"
+      local printIncorrect=1
+      ((total+=3))
+    fi
+
+    local testName=$(basename "$result")
+    printf "  %12s %b %12s %b\n" ${testName:0:12} "$comparisonColour" $comparison "$RESET"
+
+  done
+
+  # Print total score
+  local percentage=$(echo "$points / $total * 100" | bc -l | awk '{print int($1)}')
+  echo
+  log "Program score is ${BOLD}${points}/${total}${RESET} (${percentage}%) points\n"
+
+
+  # Show that tests failed
+  if [ "$points" -ne "$total" ]; then
+    exit 1
+  fi
+
+}
+
+
 runTests "$programPath"
+anaylsePerformance
