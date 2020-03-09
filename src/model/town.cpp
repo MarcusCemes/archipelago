@@ -62,6 +62,15 @@ town::Town town::loadFromFile(char *path) {
   }
 }
 
+town::int getLinks(Node w) {
+       unsigned int number_links;
+       for (unsigned int i(0), i < links.size_t, i++) {
+            if ((links[i].uid1 == w.getUid) || (links[i].uid2 == w.getUid))
+               number_links++;
+       }
+       return number_links;
+  }
+
 /* === INTERNAL FUNCTIONS === */
 
 namespace {
