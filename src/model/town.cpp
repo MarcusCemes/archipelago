@@ -34,8 +34,7 @@ bool startsWith(const std::string sample, const std::string term);
 
 /* === CLASSES === */
 
-town::Town::Town(std::vector<node::Node> nodes,
-                 std::vector<node::Link> links)
+town::Town::Town(std::vector<node::Node> nodes, std::vector<node::Link> links)
     : nodes(nodes), links(links) {}
 
 std::vector<node::Node> town::Town::getNodes() { return nodes; }
@@ -62,14 +61,16 @@ town::Town town::loadFromFile(char *path) {
   }
 }
 
-town::int getLinks(Node w) {
-       unsigned int number_links;
-       for (unsigned int i(0), i < links.size_t, i++) {
-            if ((links[i].uid1 == w.getUid) || (links[i].uid2 == w.getUid))
-               number_links++;
-       }
-       return number_links;
+/** Count number of links connected dto a node */
+unsigned int town::Town::getLinks(node::Node node) {
+  unsigned int number_links(0);
+  for (size_t i(0); i < links.size(); ++i) {
+    if ((links[i].uid1 == node.getUid()) || (links[i].uid2 == node.getUid())) {
+      number_links++;
+    }
   }
+  return number_links;
+}
 
 /* === INTERNAL FUNCTIONS === */
 
