@@ -42,17 +42,19 @@ void town::Town::setNodes(Nodes newNodes) { nodes = newNodes; }
 Links town::Town::getLinks() { return links; }
 void town::Town::setLinks(Links newLinks) { links = newLinks; }
 
-/** Count number of links connected to a node */
-unsigned int town::Town::getLinks(node::Node node) {
-  unsigned int number_links(0);
+/** Returns a vector of node UIDs that have a link with the given node */
+std::vector<unsigned int> town::Town::nodeLinks(unsigned int uid) {
+  std::vector<unsigned int> connectedNodes;
 
-  for (size_t i(0); i < links.size(); ++i) {
-    if ((links[i].uid0 == node.getUid()) || (links[i].uid1 == node.getUid())) {
-      ++number_links;
+  for (auto const &link : links) {
+    if (link.uid0 == uid) {
+      connectedNodes.push_back(link.uid1);
+    } else if (link.uid1 == uid) {
+      connectedNodes.push_back(link.uid0);
     }
   }
 
-  return number_links;
+  return connectedNodes;
 }
 
 /* === FUNCTIONS === */
