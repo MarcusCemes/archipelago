@@ -1,12 +1,22 @@
-#include "verifications.hpp"
+using namespace node;
+using namespace town;
 
-// Two nodes overlap
-std::void collison_quartiers (Node w, Node u);
+std::void same_uid (Town town);
 
-// A node overlap a link
-std::void collision_lien_quartier (Node w, Node u, Node v);
+std::void nonexistant_node (Town town);
 
-// A housing node number of links exceeds the allowed maximum number
-std::void connexions_logements(int nbLinks, Node w);
+std::void connexions_logements(Node node);
 
+std::void same_link (Town town);
 
+std::void collision_lien_quartier (Node node, Node node1, Node node2);
+
+std::void collison_quartiers (Node node1, Node node2);
+
+std::void wrong_uid (Node node)
+
+std::void link_same_node (Town town)
+
+std::void min_capacite (Node node)
+
+std::void max_capacite (Node node)

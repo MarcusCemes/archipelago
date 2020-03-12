@@ -43,9 +43,8 @@ Links town::Town::getLinks() { return links; }
 void town::Town::setLinks(Links newLinks) { links = newLinks; }
 
 /** Count number of links connected to a node */
-unsigned int town::Town::getLinks(node::Node node) {
+unsigned int town::Town::get_links(node::Node node) {
   unsigned int number_links(0);
-
   for (size_t i(0); i < links.size(); ++i) {
     if ((links[i].uid0 == node.getUid()) || (links[i].uid1 == node.getUid())) {
       ++number_links;
