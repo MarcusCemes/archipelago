@@ -12,6 +12,13 @@ struct Position {
   double y;
 };
 
+struct Vecteur {
+  double x;
+  double y;
+}
+
+double dist_min_point_droite (Position point, Position centre1, Position centre2);
+
 }  // namespace tools
 
 #endif
