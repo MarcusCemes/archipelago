@@ -18,12 +18,13 @@ enum NodeType { HOUSING, TRANSPORT, PRODUCTION };
  */
 class Node {
  public:
-  Node(NodeType type, int uid, tools::Position position, int capacity);
+  Node(NodeType type, unsigned int uid, tools::Position position,
+       unsigned int capacity);
 
   /* Accessors/Manipulators */
 
-  int getUid() const;
-  void setUid(int uid);
+  unsigned int getUid() const;
+  void setUid(unsigned int uid);
 
   NodeType getType() const;
   void setType(NodeType type);
@@ -31,27 +32,27 @@ class Node {
   tools::Position getPos() const;
   void setPos(tools::Position position);
 
-  int getCapacity() const;
-  void setCapacity(int capacity);
+  unsigned int getCapacity() const;
+  void setCapacity(unsigned int capacity);
 
   /* Methods */
 
-  int getRadius() const;
+  unsigned int getRadius() const;
 
  private:
   NodeType type;
-  int uid;
+  unsigned int uid;
   tools::Position position;
-  int capacity;
+  unsigned int capacity;
 };
 
 /* === DEFINITIONS === */
 
 struct Link {
-  int uid1;
-  int uid2;
+  unsigned int uid0;
+  unsigned int uid1;
 };
 
-}
+}  // namespace node
 
 #endif

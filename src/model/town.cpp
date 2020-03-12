@@ -3,6 +3,7 @@
 
 #include <fstream>   // istream
 #include <iostream>  // cerr
+#include <limits>    // numeric_mitis
 #include <sstream>   // stringstream
 #include <string>
 #include <vector>
@@ -13,39 +14,45 @@
 /* === INTERNAL DEFINITIONS AND PROTOTYPES === */
 
 namespace {
-/** Last selected type to be created */
-enum SelectedType { T_NULL, T_HOUSING, T_TRANSPORT, T_PRODUCTION, T_LINK };
 
 constexpr char COMMENT_DELIMITER('#');
+constexpr char SPACE_CHAR(' ');
+constexpr char TAB_CHAR('\t');
 constexpr char NULL_CHAR('\0');
 
+typedef std::vector<node::Node> Nodes;
+typedef std::vector<node::Link> Links;
+
 town::Town parseTown(std::istream &stream);
-bool readLine(std::istream &stream, std::string &line);
-void parseLine(std::string &line, std::vector<node::Node> &nodes,
-               std::vector<node::Link> &links, SelectedType &selectedType);
-void readWords(std::istream &stream, std::vector<std::string> &words);
-void parseNode(std::vector<node::Node> &nodes, std::vector<std::string> &words,
-               SelectedType &selectedType);
-void parseLink(std::vector<node::Link> &links, std::vector<std::string> &words);
-std::string extractValue(const std::string word);
-int getFirstNumberIndex(const std::string word);
-bool startsWith(const std::string sample, const std::string term);
+void parseNodes(std::istream &stream, Nodes &nodes, node::NodeType type);
+void parseLinks(std::istream &stream, Links &links);
+
+std::stringstream getNextLine(std::istream &stream);
+int readInt(std::istream &stream);
+double readDouble(std::istream &stream);
 }  // namespace
 
 /* === CLASSES === */
 
-town::Town::Town(std::vector<node::Node> nodes,
-                 std::vector<node::Link> links)
-    : nodes(nodes), links(links) {}
+town::Town::Town(Nodes nodes, Links links) : nodes(nodes), links(links) {}
 
-std::vector<node::Node> town::Town::getNodes() { return nodes; }
-void town::Town::setNodes(std::vector<node::Node> newNodes) {
-  nodes = newNodes;
-}
+Nodes town::Town::getNodes() { return nodes; }
+void town::Town::setNodes(Nodes newNodes) { nodes = newNodes; }
 
-std::vector<node::Link> town::Town::getLinks() { return links; }
-void town::Town::setLinks(std::vector<node::Link> newLinks) {
-  links = newLinks;
+Links town::Town::getLinks() { return links; }
+void town::Town::setLinks(Links newLinks) { links = newLinks; }
+
+/** Count number of links connected to a node */
+unsigned int town::Town::getLinks(node::Node node) {
+  unsigned int number_links(0);
+
+  for (size_t i(0); i < links.size(); ++i) {
+    if ((links[i].uid0 == node.getUid()) || (links[i].uid1 == node.getUid())) {
+      ++number_links;
+    }
+  }
+
+  return number_links;
 }
 
 /* === FUNCTIONS === */
@@ -57,7 +64,7 @@ town::Town town::loadFromFile(char *path) {
     town::Town town(parseTown(file));
     return town;
   } else {
-    std::cerr << "File not open" << std::endl;
+    std::cerr << "Error: Could not open file" << std::endl;
     return town::Town();
   }
 }
@@ -67,119 +74,96 @@ town::Town town::loadFromFile(char *path) {
 namespace {
 /** Parses a town from a multiline input stream */
 town::Town parseTown(std::istream &stream) {
-  std::vector<node::Node> nodes;
-  std::vector<node::Link> links;
-  std::string line;
-  SelectedType selectedType(T_NULL);  // no type set yet
+  Nodes nodes;
+  Links links;
 
-  // Read each line and parse it
-  while (readLine(stream, line)) {
-    parseLine(line, nodes, links, selectedType);
+  // Parse each node
+  node::NodeType types[] = {node::HOUSING, node::TRANSPORT, node::PRODUCTION};
+  for (auto &type : types) {
+    parseNodes(stream, nodes, type);
   }
+
+  // Parse each link
+  parseLinks(stream, links);
 
   town::Town createdTown(nodes, links);
   return createdTown;
 }
 
+/** Read a certain node type and apprend to a vector */
+void parseNodes(std::istream &rawStream, Nodes &nodes, node::NodeType type) {
+  std::stringstream lineStream(getNextLine(rawStream));
+
+  size_t count(readInt(lineStream));
+
+  unsigned int uid, capacity;
+  double x, y;
+
+  // Read as many nodes as were specified by the count
+  for (size_t i(0); i < count; ++i) {
+    lineStream = getNextLine(rawStream);
+    uid = readInt(lineStream);
+    x = readDouble(lineStream);
+    y = readDouble(lineStream);
+    capacity = readInt(lineStream);
+
+    nodes.push_back(node::Node(type, uid, {x, y}, capacity));
+  }
+}
+
+void parseLinks(std::istream &rawStream, Links &links) {
+  std::stringstream lineStream(getNextLine(rawStream));
+
+  size_t count(readInt(lineStream));
+  unsigned int uid0, uid1;
+
+  // Read as many links as were specified by the count
+  for (size_t i(0); i < count; ++i) {
+    lineStream = getNextLine(rawStream);
+    uid0 = readInt(lineStream);
+    uid1 = readInt(lineStream);
+
+    links.push_back({uid0, uid1});
+  }
+}
+
 /**
- * Read a single line from a stream up to a comment delimiter
- * @returns `true` if a line was read, `false` otherwise
+ * Read a single line from a stream. Ignores comment lines.
  */
-bool readLine(std::istream &stream, std::string &line) {
-  if (stream.eof()) return false;
-
-  std::string rawLine;
-  std::getline(stream, rawLine);
-  size_t commentPos(rawLine.find(COMMENT_DELIMITER));
-  if (commentPos == std::string::npos) {  // index not found
-    line = rawLine;
-  } else {
-    line = rawLine.substr(0, commentPos);
+std::stringstream getNextLine(std::istream &stream) {
+  // Return a stringstream with an EOF bit
+  if (stream.eof()) {
+    std::stringstream emptyStream("");
+    emptyStream.ignore(std::numeric_limits<std::streamsize>::max());
+    return emptyStream;
   }
-  return true;
-}
 
-/** Parse a line of the town format */
-void parseLine(std::string &line, std::vector<node::Node> &nodes,
-               std::vector<node::Link> &links, SelectedType &type) {
-  std::stringstream stream(line);
-  std::vector<std::string> words;
+  std::string line;
+  std::getline(stream, line);
 
-  readWords(stream, words);  // split string into words
-  if (words.size() == 0) return;
+  bool hasComment(line.find(COMMENT_DELIMITER) != std::string::npos);
+  bool hasContent(line.length() != 0 &&
+                  line.find_first_not_of(SPACE_CHAR) != std::string::npos);
 
-  // Change the type selection
-  if (startsWith(words[0], "nbNodeL")) {
-    type = T_HOUSING;
-  } else if (startsWith(words[0], "nbNodeT")) {
-    type = T_TRANSPORT;
-  } else if (startsWith(words[0], "nbNodeP")) {
-    type = T_PRODUCTION;
-  } else if (startsWith(words[0], "nbLink")) {
-    type = T_LINK;
-  } else {
-    // create the selected type
-    if (type == T_LINK) {
-      parseLink(links, words);
-    } else {
-      parseNode(nodes, words, type);
-    }
+  // skip comments or empty lines
+  if (hasComment || !hasContent) {
+    return getNextLine(stream);  // recursively fetch the next line
   }
+
+  std::stringstream lineStream(line);
+  return lineStream;
 }
 
-/** Splits all space-separated words and replace vector<string>'s contents */
-void readWords(std::istream &stream, std::vector<std::string> &words) {
-  words.clear();
-  std::string word;
-
-  while (stream >> word) {
-    words.push_back(word);
-  }
+int readInt(std::istream &stream) {
+  int buffer(0);
+  stream >> buffer;
+  return buffer;
 }
 
-/** Parses node creation parameters that are required to create a node */
-void parseNode(std::vector<node::Node> &nodes, std::vector<std::string> &words,
-               SelectedType &selectedType) {
-  int uid(stoi(extractValue(words[0])));
-  double x(stoi(extractValue(words[1])));
-  double y(stoi(extractValue(words[2])));
-  int pop(stoi(extractValue(words[3])));
-
-  node::NodeType type =
-      selectedType == T_HOUSING
-          ? node::HOUSING
-          : selectedType == T_TRANSPORT ? node::TRANSPORT : node::PRODUCTION;
-
-  nodes.push_back(node::Node(type, uid, {x, y}, pop));
-}
-
-/** Parse a link creation line and add to the links vector */
-void parseLink(std::vector<node::Link> &links,
-               std::vector<std::string> &words) {
-  int uid1(stoi(extractValue(words[0])));
-  int uid2(stoi(extractValue(words[1])));
-
-  links.push_back({uid1, uid2});
-}
-
-std::string extractValue(const std::string word) {
-  int index(getFirstNumberIndex(word));
-  return word.substr(index);
-}
-
-/** Get the index of the first numerical charcater in a string */
-int getFirstNumberIndex(const std::string word) {
-  size_t END(word.length());
-  for (size_t i(0); i < END; ++i) {
-    if (isdigit(word[i])) return i;
-  }
-  return -1;
-}
-
-/** Check if a sample string starts with a character array */
-bool startsWith(const std::string sample, const std::string term) {
-  if (sample.length() < term.length()) return false;
-  return sample.substr(0, term.length()) == term;
+double readDouble(std::istream &stream) {
+  double buffer(0.);
+  stream >> buffer;
+  return buffer;
 }
 
 }  // namespace
