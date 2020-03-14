@@ -98,6 +98,12 @@ run: $(DIST_DIR)/$(BUILD_TARGET)
 	@$(DIST_DIR)/$(BUILD_TARGET) "test/tests/s01.txt"
 
 
+# Run the tests on built target
+.PHONY: test
+test: $(DIST_DIR)/$(BUILD_TARGET)
+	@test/run_tests.sh $(DIST_DIR)/$(BUILD_TARGET)
+
+
 # Delete build directories
 .PHONY: clean
 clean:
