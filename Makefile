@@ -95,7 +95,7 @@ $(OBJ_DIR):
 # Run the build target, convienence function
 .PHONY: run
 run: $(DIST_DIR)/$(BUILD_TARGET)
-	@$(DIST_DIR)/$(BUILD_TARGET) "tests/basic/in.txt"
+	@$(DIST_DIR)/$(BUILD_TARGET) "test/tests/s01.txt"
 
 
 # Delete build directories
