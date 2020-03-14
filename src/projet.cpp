@@ -34,11 +34,10 @@ void init() {
 /** Create a town from saved file and launch the GUI */
 void init(char *file) {
   town::Town town(town::loadFromFile(file));
-  // TODO validate town
   start(town);
 }
 
-/** STUB - Launch the program with the passed town */
+/** STUB - Launch the program with the given Town */
 void start(town::Town &town) {
-  town.getNodes();  // stub, hide -Wunusfed-parameter warning
+  town.getNodes();  // stub, hides -Wunusfed-parameter warning
 }

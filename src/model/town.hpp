@@ -18,13 +18,12 @@ class Town {
  public:
   Town(std::vector<node::Node> nodes = std::vector<node::Node>(),
        std::vector<node::Link> links = std::vector<node::Link>());
-  unsigned int get_links(node::Node node);
 
   /* Accessors/Manipulators */
-  std::vector<node::Node> getNodes();
+  std::vector<node::Node> getNodes() const;
   void setNodes(std::vector<node::Node> nodes);
 
-  std::vector<node::Link> getLinks();
+  std::vector<node::Link> getLinks() const;
   void setLinks(std::vector<node::Link> links);
 
  private:
