@@ -57,6 +57,7 @@ std::ostream& operator<<(std::ostream& stream, const Vec2& vector);
  * a point and a line defined by two points
  */
 double minPointLineDistance(Vec2 point, Vec2 lineA, Vec2 lineB);
+double minPointSegment(Vec2 point, Vec2 pointA, Vec2 pointB);
 
 }  // namespace tools
 

@@ -5,6 +5,7 @@
 #include <iostream>
 #include <sstream>
 #include <string>
+#include <algorithm>
 
 #include "tools.hpp"
 
@@ -83,4 +84,17 @@ double minPointLineDistance(Vec2 point, Vec2 lineA, Vec2 lineB) {
   return (vecAP - vecAX).norm();
 }
 
+double minPointSegment(Vec2 point, Vec2 pointA, Vec2 pointB) {
+  Vec2 vecAB(pointB - pointA);
+  Vec2 vecAP(point - pointA);
+  Vec2 vecBP(point - pointB);
+  Vec2 vecAX(vecAP.project(vecAB));
+  Vec2 vecBX(vecBP.project(vecAB));
+  if ((vecAX.norm() < vecAB.norm()) and (vecBX.norm() < vecAB.norm())) { 
+    return (vecAP - vecAX).norm(); 
+  }
+  else { return min<double>(vecAP.norm(), vecBP.norm()); }
+}
+
 }  // namespace tools
+
