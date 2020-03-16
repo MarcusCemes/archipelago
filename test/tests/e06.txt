@@ -1,9 +1,11 @@
 # error: node superposition
+# changed #16's x coordinate to -520 to fix double error in original
+# https://www.desmos.com/calculator/eegn94hthp
 
 5	# housing
 	 14    0    -30 25000
 	 15  500      0 28000
-	 16 -500      0 28000
+	 16 -520      0 28000
 	  0 -301      0  1000
 	666 -698.94   0  1000
 

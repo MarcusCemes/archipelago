@@ -37,7 +37,7 @@ string validateAll(const Nodes& nodes, const Links& links) {
 
     /* Dependent tests - These depend on the above */
     // e.g. An illegal capacity size may cause a "false" node collision
-    // nodeLinkCollision(nodes, links);
+    nodeLinkCollision(nodes, links);
     nodeCollision(nodes);
     maxHousingConnections(links);  // This MUST execute after `duplcateLinks`
     return error::success();
@@ -108,7 +108,6 @@ void validCapacity(const Nodes& nodes) {
   }
 }
 
-// TODO - Check for *segment* collisions, not *line* collisions
 /** Checks for collision between nodes and links */
 void nodeLinkCollision(const Nodes& nodes, const Links& links) {
   // Optimised map of node positions and sizes (pending better node lookup)
@@ -117,15 +116,20 @@ void nodeLinkCollision(const Nodes& nodes, const Links& links) {
     positionMap[node.getUid()] = node.getPosition();
 
   // Check for collisions
-  unsigned uid;
-  unsigned radius;
+  unsigned uid, link0, link1;
+  double radius;
   for (const auto& node : nodes) {
     for (const auto& link : links) {
       uid = node.getUid();
+      link0 = link.getUid0();
+      link1 = link.getUid1();
+
+      // Ignore node connections to self, these can violate safety distances
+      if (uid == link0 || uid == link1) continue;
       radius = node.radius();
-      if (minPointLineDistance(positionMap[uid], positionMap[link.getUid0()],
-                               positionMap[link.getUid1()]) <=
-          (radius + DIST_MIN)) {
+
+      if (minPointSegmentDistance(positionMap[uid], positionMap[link0],
+                                  positionMap[link1]) <= (radius + DIST_MIN)) {
         throw node_link_superposition(uid);
       }
     }

@@ -36,7 +36,7 @@ class Node {
 
   /* Methods */
 
-  unsigned radius() const;
+  double radius() const;
 
  private:
   NodeType type;
