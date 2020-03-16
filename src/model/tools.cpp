@@ -1,10 +1,11 @@
 // archipelago - model/tools.cpp
 // Tools for point, vector, segment and circle manipulation.
 
-#include <cmath>
+#include <algorithm>  // min()
+#include <cmath>      // pow(), sqrt()
 #include <iostream>
-#include <sstream>
-#include <string>
+#include <sstream>  // double formatting
+#include <string>   // toString()
 
 #include "tools.hpp"
 
@@ -74,13 +75,34 @@ std::ostream& operator<<(std::ostream& stream, const Vec2& vector) {
 
 /* === FUNCTIONS === */
 
-double minPointLineDistance(Vec2 point, Vec2 lineA, Vec2 lineB) {
+double minPointLineDistance(const Vec2& point, const Vec2& lineA,
+                            const Vec2& lineB) {
   Vec2 vecAP(point - lineA);
   Vec2 vecAB(lineB - lineA);
 
   // Projection of the point onto the line
   Vec2 vecAX(vecAP.project(vecAB));
   return (vecAP - vecAX).norm();
+}
+
+double minPointSegmentDistance(const Vec2& point, const Vec2& segmentA,
+                               const Vec2& segmentB) {
+  Vec2 vecAB(segmentB - segmentA);
+  Vec2 vecAP(point - segmentA);
+  Vec2 vecBP(point - segmentB);
+
+  // Project both segment-point vectors onto the segment
+  Vec2 vecAX(vecAP.project(vecAB));
+  Vec2 vecBX(vecBP.project(vecAB));
+
+  double segmentNorm(vecAB.norm());
+  if ((vecAX.norm() < segmentNorm) && (vecBX.norm() < segmentNorm)) {
+    // the closest distance is  somewhere on the segment
+    return (vecAP - vecAX).norm();
+  }
+
+  // the closeest point is one of the segment defining points
+  return std::min(vecAP.norm(), vecBP.norm());
 }
 
 }  // namespace tools

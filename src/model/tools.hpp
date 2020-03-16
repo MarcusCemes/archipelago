@@ -56,7 +56,13 @@ std::ostream& operator<<(std::ostream& stream, const Vec2& vector);
  * Calculates the minimum distance between
  * a point and a line defined by two points
  */
-double minPointLineDistance(Vec2 point, Vec2 lineA, Vec2 lineB);
+double minPointLineDistance(const Vec2& point, const Vec2& lineA, const Vec2& lineB);
+
+/**
+ * Calculates the minimum distance between
+ * a point and a segment defined by two points
+ */
+double minPointSegmentDistance(const Vec2& point, const Vec2& segmentA, const Vec2& segmentB);
 
 }  // namespace tools
 

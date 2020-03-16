@@ -31,7 +31,7 @@ void Node::setPosition(tools::Vec2 newPosition) { position = newPosition; }
 unsigned Node::getCapacity() const { return capacity; }
 void Node::setCapacity(unsigned newCapacity) { capacity = newCapacity; }
 
-unsigned Node::radius() const { return sqrt(capacity); }
+double Node::radius() const { return sqrt(capacity); }
 
 /* == Link == */
 
