@@ -1,13 +1,13 @@
 // archipelago - model/tools.cpp
 // Tools for point, vector, segment and circle manipulation.
 
+#include "tools.hpp"
+
 #include <algorithm>  // min()
 #include <cmath>      // pow(), sqrt()
 #include <iostream>
 #include <sstream>  // double formatting
 #include <string>   // toString()
-
-#include "tools.hpp"
 
 namespace tools {
 
@@ -75,8 +75,7 @@ std::ostream& operator<<(std::ostream& stream, const Vec2& vector) {
 
 /* === FUNCTIONS === */
 
-double minPointLineDistance(const Vec2& point, const Vec2& lineA,
-                            const Vec2& lineB) {
+double minPointLineDistance(const Vec2& point, const Vec2& lineA, const Vec2& lineB) {
   Vec2 vecAP(point - lineA);
   Vec2 vecAB(lineB - lineA);
 
