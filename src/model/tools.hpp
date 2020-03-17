@@ -62,7 +62,8 @@ double minPointLineDistance(const Vec2& point, const Vec2& lineA, const Vec2& li
  * Calculates the minimum distance between
  * a point and a segment defined by two points
  */
-double minPointSegmentDistance(const Vec2& point, const Vec2& segmentA, const Vec2& segmentB);
+double minPointSegmentDistance(const Vec2& point, const Vec2& segmentA,
+                               const Vec2& segmentB);
 
 }  // namespace tools
 

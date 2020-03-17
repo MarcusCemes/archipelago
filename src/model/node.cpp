@@ -1,9 +1,9 @@
 // archipelago - model/node.cpp
 // Classes and tools for node management
 
-#include <math.h>
-
 #include "node.hpp"
+
+#include <math.h>
 
 /* === CLASSES === */
 

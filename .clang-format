@@ -1,0 +1,4 @@
+# Custom C++ formatting
+Language: Cpp
+BasedOnStyle: Google
+ColumnLimit: 87

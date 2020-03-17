@@ -2,13 +2,14 @@
 // Functions for standard execution errors
 
 #include "error.hpp"
+
 #include "constants.hpp"
 
 using namespace std;
 
 /* === Internal function prototypes === */
 namespace {
-void sort_uid(unsigned int& uid1, unsigned int& uid2);
+void sort_uid(unsigned int &uid1, unsigned int &uid2);
 }
 
 /* === External functions === */
@@ -24,8 +25,7 @@ string error::link_vacuum(unsigned int uid) {
 }
 
 string error::max_link(unsigned int uid) {
-  return string("Too many connections for node: ") + to_string(uid) +
-         string("\n");
+  return string("Too many connections for node: ") + to_string(uid) + string("\n");
 }
 
 string error::multiple_same_link(unsigned int uid1, unsigned int uid2) {
@@ -59,20 +59,18 @@ string error::self_link_node(unsigned int uid) {
 }
 
 string error::too_little_capacity(unsigned int capacity) {
-  return string("Impossible to have a too little capacity: ") +
-         to_string(capacity) + string(" < ") + to_string(MIN_CAPACITY) +
-         string("\n");
+  return string("Impossible to have a too little capacity: ") + to_string(capacity) +
+         string(" < ") + to_string(MIN_CAPACITY) + string("\n");
 }
 
 string error::too_much_capacity(unsigned int capacity) {
-  return string("Impossible to have a too much capacity: ") +
-         to_string(capacity) + string(" > ") + to_string(MAX_CAPACITY) +
-         string("\n");
+  return string("Impossible to have a too much capacity: ") + to_string(capacity) +
+         string(" > ") + to_string(MAX_CAPACITY) + string("\n");
 }
 
 /* === Internal functions === */
 namespace {
-void sort_uid(unsigned int& uid1, unsigned int& uid2) {
+void sort_uid(unsigned int &uid1, unsigned int &uid2) {
   if (uid1 > uid2) {
     unsigned int uid_tmp(uid2);
     uid2 = uid1;
