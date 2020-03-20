@@ -57,8 +57,9 @@ string validateAll(const Nodes& nodes, const Links& Links);
 void duplicateUids(const Nodes& nodes);
 void linkUidsExist(const Nodes& nodes, const Links& links);
 void duplicateLinks(const Links& links);
-void nodeLinkCollision(const Nodes& nodes, const Links& links);
-void nodeCollision(const Nodes& nodes);
+void nodeLinkCollision(const Nodes& nodes, const Links& links,
+                       const double& safetyDistance = 0.);
+void nodeCollision(const Nodes& nodes, const double& safetyDistance = 0.);
 void maxHousingConnections(const Links& links);
 void reservedUid(const Nodes& nodes);
 void badLink(const Links& links);
@@ -301,7 +302,8 @@ void validCapacity(const Nodes& nodes) {
 }
 
 /** Checks for collision between nodes and links */
-void nodeLinkCollision(const Nodes& nodes, const Links& links) {
+void nodeLinkCollision(const Nodes& nodes, const Links& links,
+                       const double& safetyDistance) {
   // Optimised map of node positions and sizes (pending better node lookup)
   map<unsigned, Vec2> positionMap;
   for (const auto& node : nodes) positionMap[node.getUid()] = node.getPosition();
@@ -320,7 +322,7 @@ void nodeLinkCollision(const Nodes& nodes, const Links& links) {
       radius = node.radius();
 
       if (minPointSegmentDistance(positionMap[uid], positionMap[link0],
-                                  positionMap[link1]) <= (radius + DIST_MIN)) {
+                                  positionMap[link1]) <= (radius + safetyDistance)) {
         throw error::node_link_superposition(uid);
       }
     }
@@ -328,7 +330,7 @@ void nodeLinkCollision(const Nodes& nodes, const Links& links) {
 }
 
 /** Check for collision between nodes with a safety distance */
-void nodeCollision(const Nodes& nodes) {
+void nodeCollision(const Nodes& nodes, const double& safetyDistance) {
   double distance;
   auto END(nodes.end());
   for (auto i(nodes.begin()); i != END; ++i) {
@@ -336,7 +338,7 @@ void nodeCollision(const Nodes& nodes) {
       if (j <= i) continue;
 
       distance = ((*j).getPosition() - (*i).getPosition()).norm();
-      if (distance <= (*i).radius() + (*j).radius() + DIST_MIN) {
+      if (distance <= (*i).radius() + (*j).radius() + safetyDistance) {
         throw error::node_node_superposition((*i).getUid(), (*j).getUid());
       }
     }
