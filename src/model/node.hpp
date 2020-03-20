@@ -13,8 +13,13 @@ namespace node {
 enum NodeType { HOUSING, TRANSPORT, PRODUCTION };
 
 /**
- * Class that represents a node with a unique identifier,
- * a position and a capacity.
+ * A high level class object that represents a district (town node).
+ *
+ * Stores an immutable uid, a position and capacity, with methods to calculate
+ * properties such as the radius.
+ *
+ * When creating/updating attributes, the method may throw an error if an
+ * inconsistency is encountered, such as an incorrect capacity or invalid uid.
  */
 class Node {
  public:
@@ -23,7 +28,6 @@ class Node {
   /* Accessors/Manipulators */
 
   unsigned getUid() const;
-  void setUid(unsigned uid);
 
   NodeType getType() const;
   void setType(NodeType type);
@@ -32,10 +36,14 @@ class Node {
   void setPosition(tools::Vec2 position);
 
   unsigned getCapacity() const;
+  /**
+   * @throws IF the capacity is not valid
+   */
   void setCapacity(unsigned capacity);
 
   /* Methods */
 
+  /** Calculate the Node's radius, based on its current capacity */
   double radius() const;
 
  private:
@@ -43,12 +51,17 @@ class Node {
   unsigned uid;
   tools::Vec2 position;
   unsigned capacity;
+
+  /** Very and set the uid. This should be immutable during the lifetime */
+  void setUid(unsigned uid);
 };
 
 /**
- * Class that represents a link between nodes.
- * A link is immutable, and uid0 is always smaller than uid1.
- * WARNING: UID SORTED NOT IMPLEMENTED YET
+ * A high level class that represents a connection between districts. The order of
+ * uids is not preserved, and uid0 is always smaller than uid1.
+ *
+ * If the uids are equivalent, the constructor will throw an error. This class is
+ * overloaded with the `==` operator to allow easy link-link comparisons.
  */
 class Link {
  public:
@@ -66,6 +79,8 @@ class Link {
  private:
   unsigned uid0;
   unsigned uid1;
+
+  void setUids(const unsigned uid0, const unsigned uid1);
 };
 
 }  // namespace node

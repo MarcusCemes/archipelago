@@ -10,7 +10,10 @@ namespace tools {
 
 /* === VECTOR === */
 
-/** A two-dimensional vector */
+/**
+ * A primitive two-dimensional vector object, with overloaded operators to allow easy
+ * vector-vector and vector-double manipulations.
+ */
 class Vec2 {
  public:
   Vec2();
@@ -53,14 +56,12 @@ std::ostream& operator<<(std::ostream& stream, const Vec2& vector);
 /* === FUNCTIONS === */
 
 /**
- * Calculates the minimum distance between
- * a point and a line defined by two points
+ * Calculates the minimum distance between a point and a line defined by two points
  */
 double minPointLineDistance(const Vec2& point, const Vec2& lineA, const Vec2& lineB);
 
 /**
- * Calculates the minimum distance between
- * a point and a segment defined by two points
+ * Calculates the minimum distance between a point and a segment defined by two points
  */
 double minPointSegmentDistance(const Vec2& point, const Vec2& segmentA,
                                const Vec2& segmentB);
