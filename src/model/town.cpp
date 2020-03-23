@@ -35,8 +35,6 @@ namespace {
 
 constexpr char COMMENT_DELIMITER('#');
 constexpr char SPACE_CHAR(' ');
-constexpr char TAB_CHAR('\t');
-constexpr char NULL_CHAR('\0');
 
 typedef vector<Node> Nodes;
 typedef vector<Link> Links;
