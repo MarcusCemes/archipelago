@@ -20,6 +20,7 @@ enum NodeType { HOUSING, TRANSPORT, PRODUCTION };
  *
  * When creating/updating attributes, the method may throw an error if an
  * inconsistency is encountered, such as an incorrect capacity or invalid uid.
+ * A Node has no conception of a town, and will not check for duplicate ids.
  */
 class Node {
  public:
@@ -52,7 +53,7 @@ class Node {
   tools::Vec2 position;
   unsigned capacity;
 
-  /** Very and set the uid. This should be immutable during the lifetime */
+  /** Validate and set the uid. This should be immutable during the lifetime */
   void setUid(unsigned uid);
 };
 

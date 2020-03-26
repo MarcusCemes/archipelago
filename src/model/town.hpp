@@ -11,9 +11,6 @@
 
 #include "node.hpp"
 
-using node::Link;
-using node::Node;
-
 namespace town {
 
 /* === CLASSES === */
@@ -23,24 +20,24 @@ namespace town {
  * data structure.
  *
  * Insertion/modification operations that make sense on a town-level may throw
- * errors if a physically incorrect situation arrives, such as duplicate node or a
- * superposition between town members.
+ * errors if a physically incorrect situation arrives, such as a duplicate node uid
+ * or a superposition between town members.
  */
 class Town {
  public:
-  Town(std::vector<Node> nodes = std::vector<Node>(),
-       std::vector<Link> links = std::vector<Link>());
+  Town(std::vector<node::Node> nodes = std::vector<node::Node>(),
+       std::vector<node::Link> links = std::vector<node::Link>());
 
   /* Accessors/Manipulators */
 
   /**
    * Add a Node to the town.
-   * @throw If the node exists or causes a superposition with existing town members
+   * @throws If the node exists or causes a superposition with existing town members
    */
-  void addNode(const Node& node, const double safetyDistance = 0.);
+  void addNode(const node::Node& node, const double safetyDistance = 0.);
 
   /** Returns a constant pointer to the node instance, or nullptr */
-  const Node* getNode(const unsigned uid) const;
+  const node::Node* getNode(const unsigned uid) const;
 
   /** Returns a list of node uids that are a part of the town */
   std::vector<unsigned> getNodes() const;
@@ -50,40 +47,43 @@ class Town {
 
   /**
    * Adds a link to the town
-   * @throw If the link's nodes are not a part of the town, or a superposition occurs
+   * @throws If the link's nodes are not a part of the town, or a superposition occurs
    */
-  void addLink(const Link& link);
+  void addLink(const node::Link& link);
 
   /** Whether the town contains a certain link between nodes (uid order-independent) */
-  bool hasLink(const Link& link) const;
+  bool hasLink(const node::Link& link) const;
 
   /**
    * Get a list of nodes that are linked to the given node
-   * @throw If the node is not a part of the town
+   * @throws If the node is not a part of the town
    */
   std::vector<unsigned> getLinkedNodes(const unsigned uid) const;
 
   /** Removes a link from the town. Does not check if the link exists */
-  void removeLink(const Link& link);
+  void removeLink(const node::Link& link);
 
  private:
   /* Attributes */
 
   /** A uid-sorted map of nodes belonging to the town */
-  std::map<unsigned, Node> nodes;
+  std::map<unsigned, node::Node> nodes;
 
   /** A list of Link instances that are part of the town */
-  std::vector<Link> links;
+  std::vector<node::Link> links;
 
   /* Methods */
 
   /** Checks whether the given node intersects any town links */
-  void checkNodeSuperposition(const Node& node, const double safetyDistance = 0.);
+  void checkNodeSuperposition(const node::Node& node,
+                              const double safetyDistance = 0.);
 
   /** Checks whether the given node intersects any town links */
-  void checkLinkSuperposition(const Node& node, const double safetyDistance = 0.);
+  void checkLinkSuperposition(const node::Node& node,
+                              const double safetyDistance = 0.);
   /** Checks whether the given link intersects any town nodes */
-  void checkLinkSuperposition(const Link& link, const double safetyDistance = 0.);
+  void checkLinkSuperposition(const node::Link& link,
+                              const double safetyDistance = 0.);
 };
 
 /* === FUNCTIONS === */

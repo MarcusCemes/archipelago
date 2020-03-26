@@ -5,7 +5,6 @@
 
 #include <algorithm>  // min()
 #include <cmath>      // pow(), sqrt()
-#include <iostream>
 #include <sstream>  // double formatting
 #include <string>   // toString()
 
