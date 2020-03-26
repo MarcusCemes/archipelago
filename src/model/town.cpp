@@ -4,6 +4,7 @@
 // #include <cmath>
 #include "town.hpp"
 
+#include <array>     // inline for loop
 #include <fstream>   // istream
 #include <iostream>  // cerr
 #include <limits>    // numeric_mitis
@@ -34,14 +35,11 @@ namespace {
 
 constexpr char COMMENT_DELIMITER('#');
 constexpr char SPACE_CHAR(' ');
-constexpr char TAB_CHAR('\t');
-constexpr char NULL_CHAR('\0');
 
 typedef vector<Node> Nodes;
 typedef vector<Link> Links;
 
-/* Town (file) parsing */
-Town parseTown(std::istream& stream);
+Town parseTown(std::istream& stream, bool quitOnError = false);
 void parseNodes(std::istream& stream, Nodes& nodes, node::NodeType type);
 void parseLinks(std::istream& stream, Links& links);
 
@@ -50,46 +48,186 @@ unsigned readUnsigned(std::istream& stream);
 unsigned long long readLongUnsigned(std::istream& stream);
 double readDouble(std::istream& stream);
 
-/* Town validation */
-
-string validateAll(const Nodes& nodes, const Links& Links);
-
-void duplicateUids(const Nodes& nodes);
-void linkUidsExist(const Nodes& nodes, const Links& links);
-void duplicateLinks(const Links& links);
-void nodeLinkCollision(const Nodes& nodes, const Links& links,
-                       const double& safetyDistance = 0.);
-void nodeCollision(const Nodes& nodes, const double& safetyDistance = 0.);
-void maxHousingConnections(const Links& links);
-void reservedUid(const Nodes& nodes);
-void badLink(const Links& links);
-void validCapacity(const Nodes& nodes);
-
 }  // namespace
 
 namespace town {
 
 /* === CLASSES === */
 
-Town::Town(Nodes nodes, Links links) : nodes(nodes), links(links) {}
+Town::Town(Nodes nodes, Links links) {
+  for (const auto& node : nodes) {
+    addNode(node);
+  }
+  for (const auto& link : links) {
+    addLink(link);
+  }
+}
 
-Nodes Town::getNodes() const { return nodes; }
-void Town::setNodes(Nodes newNodes) { nodes = newNodes; }
+void Town::addNode(const Node& node, const double safetyDistance) {
+  const unsigned uid(node.getUid());
 
-Links Town::getLinks() const { return links; }
-void Town::setLinks(Links newLinks) { links = newLinks; }
+  // Check if the node already is part of the town
+  if (nodes.count(uid) == 1) throw error::identical_uid(node.getUid());
+
+  // Check if the new node would cause a superposition
+  checkNodeSuperposition(node, safetyDistance);
+  checkLinkSuperposition(node, safetyDistance);
+
+  nodes.emplace(uid, node);  // avoid unnecessary copies
+}
+
+const Node* Town::getNode(const unsigned uid) const {
+  auto node(nodes.find(uid));
+
+  if (node == nodes.end()) return nullptr;
+  return &(node->second);
+}
+
+vector<unsigned> Town::getNodes() const {
+  vector<unsigned> nodeUids;
+  nodeUids.reserve(nodes.size());
+  for (auto const& node : nodes) {
+    nodeUids.push_back(node.second.getUid());
+  }
+  return nodeUids;
+}
+
+void Town::removeNode(const unsigned uid) { nodes.erase(uid); }
+
+void Town::addLink(const Link& link) {
+  // Check that the link doesn't already exist
+  for (const auto& townLink : links) {
+    if (townLink == link)
+      throw error::multiple_same_link(link.getUid0(), link.getUid1());
+  }
+
+  // Check that the nodes exist
+  if (nodes.count(link.getUid0()) == 0) {
+    throw error::link_vacuum(link.getUid0());
+  } else if (nodes.count(link.getUid1()) == 0) {
+    throw error::link_vacuum(link.getUid1());
+  }
+
+  // Check that the link would not exceed the housing limit
+  std::array<unsigned, 2> uids{link.getUid0(), link.getUid1()};
+  for (const unsigned& uid : uids) {
+    if (getNode(uid)->getType() == node::HOUSING) {
+      if (getLinkedNodes(uid).size() >= MAX_LINK) throw error::max_link(uid);
+    }
+  }
+
+  checkLinkSuperposition(link);
+
+  links.push_back(link);
+}
+
+bool Town::hasLink(const Link& link) const {
+  for (const auto& townLink : links) {
+    if (link == townLink) return true;
+  }
+  return false;
+}
+
+vector<unsigned> Town::getLinkedNodes(const unsigned uid) const {
+  if (nodes.count(uid) == 0) throw error::link_vacuum;
+
+  vector<unsigned> nodeLinks;
+  for (const auto& link : links) {
+    if (link.getUid0() == uid) {
+      nodeLinks.push_back(link.getUid1());
+    } else if (link.getUid1() == uid) {
+      nodeLinks.push_back(link.getUid0());
+    }
+  }
+  return nodeLinks;
+}
+
+void Town::removeLink(const Link& link) {
+  auto end(links.end());
+  for (auto it(links.begin()); it < end; ++it) {
+    if (link == *it) {
+      links.erase(it);
+      return;
+    }
+  }
+}
+
+/* == Private members == */
+
+/** Checks whether the given node intersects any town links */
+void Town::checkLinkSuperposition(const Node& testNode, const double safetyDistance) {
+  unsigned uid(testNode.getUid()), link0, link1;
+  double radius;
+  for (const auto& townLink : links) {
+    link0 = townLink.getUid0();
+    link1 = townLink.getUid1();
+
+    // Ignore node connections to self, these can violate safety distances
+    if (uid == link0 || uid == link1) continue;
+    radius = testNode.radius();
+
+    if (minPointSegmentDistance(
+            nodes.at(uid).getPosition(), nodes.at(link0).getPosition(),
+            nodes.at(link1).getPosition()) <= (radius + safetyDistance)) {
+      throw error::node_link_superposition(uid);
+    }
+  }
+}
+
+/** Checks whether the given link would intersect any town nodes */
+void Town::checkLinkSuperposition(const Link& testLink, const double safetyDistance) {
+  double radius;
+  unsigned link0(testLink.getUid0()), link1(testLink.getUid1());
+
+  // Assumes that node existance was already checked
+  Vec2 link0Pos(getNode(link0)->getPosition());
+  Vec2 link1Pos(getNode(link1)->getPosition());
+
+  for (const auto& townNode : nodes) {
+    unsigned uid(townNode.second.getUid());
+
+    // Ignore node connections to self, these can violate safety distances
+    if (uid == link0 || uid == link1) continue;
+    radius = townNode.second.radius();
+
+    if (minPointSegmentDistance(townNode.second.getPosition(), link0Pos, link1Pos) <=
+        (radius + safetyDistance)) {
+      throw error::node_link_superposition(uid);
+    }
+  }
+}
+
+/** Checks whether the given node would intersect any town nodes */
+void Town::checkNodeSuperposition(const Node& testNode, const double safetyDistance) {
+  double distance;
+  for (const auto& townNodePair : nodes) {
+    const Node* townNode(&townNodePair.second);
+
+    distance = (testNode.getPosition() - townNode->getPosition()).norm();
+    if (distance <= testNode.radius() + townNode->radius() + safetyDistance) {
+      throw error::node_node_superposition(testNode.getUid(), townNode->getUid());
+    }
+  }
+}
 
 /* === FUNCTIONS === */
 
+/** Start a new town */
+void start() {
+  Town town;
+  // stub -> launch gui
+}
+
 /** Load a town from a file, or create a new one if file does not exist */
-Town loadFromFile(char* path) {
+void start(char* path) {
   std::ifstream file(path);
   if (file.is_open()) {
-    Town town(parseTown(file));
-    return town;
+    Town town(parseTown(file, true));
+    // stub -> launch gui
   } else {
     std::cerr << "Error: Could not open file" << std::endl;
-    return Town();
+    Town town;
+    // stub -> launch gui
   }
 }
 
@@ -101,30 +239,47 @@ namespace {
 
 /* == Town parsing == */
 
-/** Parses a town from a multiline input stream */
-Town parseTown(std::istream& stream) {
+/**
+ * Reads an entire input stream and generates a town using the archipelago file
+ * format.
+ *
+ * If quitOnError is true, the program will output the results to the terminal, and
+ * additionally exit immediately if a parsing error is encountered.
+ */
+Town parseTown(std::istream& stream, bool quitOnError) {
   Nodes nodes;
   Links links;
 
-  // Parse each node
-  parseNodes(stream, nodes, node::HOUSING);
-  parseNodes(stream, nodes, node::TRANSPORT);
-  parseNodes(stream, nodes, node::PRODUCTION);
+  try {
+    // Parse each node
+    parseNodes(stream, nodes, node::HOUSING);
+    parseNodes(stream, nodes, node::TRANSPORT);
+    parseNodes(stream, nodes, node::PRODUCTION);
 
-  // Parse each link
-  parseLinks(stream, links);
+    // Parse each link
+    parseLinks(stream, links);
 
-  // Validate all constraints on nodes and links
-  //! For the first program version, this may cause program termination
-  string result(validateAll(nodes, links));
-  std::cout << result;
-  if (result != error::success()) exit(1);
+    // Construct the town and return
+    Town town(nodes, links);
 
-  Town createdTown(nodes, links);
-  return createdTown;
+    if (quitOnError) std::cout << error::success();
+
+    return town;
+
+  } catch (string& error) {
+    if (quitOnError == true) {
+      std::cout << error;
+      exit(1);
+    }
+  }
+
+  return Town();
 }
 
-/** Read a certain node type and apprend to a vector */
+/**
+ * Read and parse a single node type from an input stream, create the Node instances
+ * and append them to the given vector. This function initially reads the node count.
+ */
 void parseNodes(std::istream& rawStream, Nodes& nodes, node::NodeType type) {
   std::stringstream lineStream(getNextLine(rawStream));
 
@@ -145,6 +300,10 @@ void parseNodes(std::istream& rawStream, Nodes& nodes, node::NodeType type) {
   }
 }
 
+/**
+ * Read and parse links from an input stream, creating Link objects and appending
+ * them to a vector.
+ */
 void parseLinks(std::istream& rawStream, Links& links) {
   std::stringstream lineStream(getNextLine(rawStream));
 
@@ -161,7 +320,10 @@ void parseLinks(std::istream& rawStream, Links& links) {
   }
 }
 
-/** Read a single line from a stream. Ignores comment lines. */
+/**
+ * Read a single line of real content (containing readable characters) from an
+ * input stream. Each line is stripped of comments before being returned.
+ */
 std::stringstream getNextLine(std::istream& stream) {
   // Signal the end by return a stringstream with an EOF bit
   if (stream.eof()) {
@@ -210,169 +372,6 @@ double readDouble(std::istream& stream) {
   double buffer(0.);
   stream >> buffer;
   return buffer;
-}
-
-/* == Town validation == */
-
-/**
- * Node & Link validation. Returns the validation status string.
- * Unfortunately, despite issue #26490, the order *does* matter.
- */
-string validateAll(const Nodes& nodes, const Links& links) {
-  try {
-    /** Independent tests - These must be validated first */
-    reservedUid(nodes);
-    duplicateUids(nodes);
-    linkUidsExist(nodes, links);  // should come after `reservedUid`
-    duplicateLinks(links);
-    validCapacity(nodes);
-    badLink(links);
-
-    /* Dependent tests - These depend on the above */
-    // e.g. An illegal capacity size may cause a "false" node collision
-    nodeLinkCollision(nodes, links);
-    nodeCollision(nodes);
-    maxHousingConnections(links);  // This MUST execute after `duplcateLinks`
-    return error::success();
-  } catch (string& err) {
-    return err;
-  }
-}
-
-/** Iterate over a list of nodes and checkfor duplicate uids */
-void duplicateUids(const Nodes& nodes) {
-  auto END(nodes.end());
-  for (auto i(nodes.begin()); i != END; ++i) {
-    for (auto j(nodes.begin()); j != END; ++j) {
-      if (j <= i) continue;
-
-      unsigned iUid((*i).getUid()), jUid((*j).getUid());
-      if (iUid == jUid) {
-        throw error::identical_uid(iUid);
-      }
-    }
-  }
-}
-
-/** Check that each link's nodes exist */
-void linkUidsExist(const Nodes& nodes, const Links& links) {
-  // Generate an optimised uid set
-  vector<unsigned> listOfUids;
-  listOfUids.reserve(nodes.size());
-  for (const auto& node : nodes) {
-    listOfUids.push_back(node.getUid());
-  }
-  set<unsigned> nodeUids(listOfUids.begin(), listOfUids.end());
-
-  // Iterate over links and check for the existence of the node's uid
-  for (const auto& link : links) {
-    if (nodeUids.find(link.getUid0()) == nodeUids.end()) {
-      throw error::link_vacuum(link.getUid0());
-    }
-    if (nodeUids.find(link.getUid1()) == nodeUids.end()) {
-      throw error::link_vacuum(link.getUid1());
-    }
-  }
-}
-
-/** Check for duplicate links */
-void duplicateLinks(const Links& links) {
-  // Iterate over each pair of links, avoiding duplicate work
-  auto END(links.end());
-  for (auto i(links.begin()); i != END; ++i) {
-    for (auto j(links.begin()); j != END; ++j) {
-      if (j <= i) continue;
-
-      // Make use of Link's `operator==` overloading
-      if ((*i) == (*j)) {
-        throw error::multiple_same_link((*i).getUid0(), (*i).getUid1());
-      }
-    }
-  }
-}
-
-/** Check that all nodes have a allowed capacity */
-void validCapacity(const Nodes& nodes) {
-  unsigned capacity;
-  for (const auto& node : nodes) {
-    capacity = node.getCapacity();
-    if (capacity < MIN_CAPACITY) throw error::too_little_capacity(capacity);
-    if (capacity > MAX_CAPACITY) throw error::too_much_capacity(capacity);
-  }
-}
-
-/** Checks for collision between nodes and links */
-void nodeLinkCollision(const Nodes& nodes, const Links& links,
-                       const double& safetyDistance) {
-  // Optimised map of node positions and sizes (pending better node lookup)
-  map<unsigned, Vec2> positionMap;
-  for (const auto& node : nodes) positionMap[node.getUid()] = node.getPosition();
-
-  // Check for collisions
-  unsigned uid, link0, link1;
-  double radius;
-  for (const auto& node : nodes) {
-    for (const auto& link : links) {
-      uid = node.getUid();
-      link0 = link.getUid0();
-      link1 = link.getUid1();
-
-      // Ignore node connections to self, these can violate safety distances
-      if (uid == link0 || uid == link1) continue;
-      radius = node.radius();
-
-      if (minPointSegmentDistance(positionMap[uid], positionMap[link0],
-                                  positionMap[link1]) <= (radius + safetyDistance)) {
-        throw error::node_link_superposition(uid);
-      }
-    }
-  }
-}
-
-/** Check for collision between nodes with a safety distance */
-void nodeCollision(const Nodes& nodes, const double& safetyDistance) {
-  double distance;
-  auto END(nodes.end());
-  for (auto i(nodes.begin()); i != END; ++i) {
-    for (auto j(nodes.begin()); j != END; ++j) {
-      if (j <= i) continue;
-
-      distance = ((*j).getPosition() - (*i).getPosition()).norm();
-      if (distance <= (*i).radius() + (*j).radius() + safetyDistance) {
-        throw error::node_node_superposition((*i).getUid(), (*j).getUid());
-      }
-    }
-  }
-}
-
-/** Count connections for each node, and check it falls within regulation */
-void maxHousingConnections(const Links& links) {
-  // Create an optimised map of (uid, numberConnections) pairs
-  map<unsigned, unsigned> connections;
-  for (const auto& link : links) {
-    // Cool C++ syntax, starts from zero if doesn't exist
-    ++connections[link.getUid0()];
-    ++connections[link.getUid1()];
-  }
-
-  // Count number of connections for each node
-  for (const auto& connection : connections) {
-    if (connection.second > MAX_LINK) throw error::max_link(connection.first);
-  }
-}
-
-/** Check that no nodes are using a reserved uid */
-void reservedUid(const Nodes& nodes) {
-  for (const auto& node : nodes) {
-    if (node.getUid() == NO_LINK) throw error::reserved_uid();
-  }
-}
-
-/** Check that there are no links to the same uid */
-void badLink(const Links& links) {
-  for (const auto& link : links) {
-    if (link.getUid0() == link.getUid1()) throw error::self_link_node(link.getUid1());
-  }
 }
 
 }  // namespace
