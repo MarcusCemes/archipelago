@@ -7,7 +7,7 @@
 #include <array>     // inline for loop
 #include <fstream>   // istream
 #include <iostream>  // cerr
-#include <limits>    // numeric_mitis
+#include <limits>    // numeric_limits
 #include <map>       // validation
 #include <set>       // validation
 #include <sstream>   // stringstream
@@ -35,6 +35,8 @@ namespace {
 
 constexpr char COMMENT_DELIMITER('#');
 constexpr char SPACE_CHAR(' ');
+
+constexpr unsigned ERROR_EXIT_CODE(1);
 
 typedef vector<Node> Nodes;
 typedef vector<Link> Links;
@@ -269,7 +271,7 @@ Town parseTown(std::istream& stream, bool quitOnError) {
   } catch (string& error) {
     if (quitOnError == true) {
       std::cout << error;
-      exit(1);
+      exit(ERROR_EXIT_CODE);
     }
   }
 
