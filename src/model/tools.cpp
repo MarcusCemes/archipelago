@@ -5,11 +5,12 @@
 
 #include <algorithm>  // min()
 #include <cmath>      // pow(), sqrt()
-#include <iostream>
-#include <sstream>  // double formatting
-#include <string>   // toString()
+#include <sstream>    // double formatting
+#include <string>     // toString()
 
 namespace tools {
+
+constexpr int INVERSE_FACTOR(-2);
 
 /* === VECTOR === */
 
@@ -28,7 +29,9 @@ double Vec2::norm() const {
   return std::sqrt((*this) * (*this));  // dot-product
 }
 
-Vec2 Vec2::inverse() const { return (*this) * std::pow((*this).norm(), -2); }
+Vec2 Vec2::inverse() const {
+  return (*this) * std::pow((*this).norm(), INVERSE_FACTOR);
+}
 
 Vec2 Vec2::project(const Vec2& ontoVector) const {
   double projectionFactor(((*this) * ontoVector) / (ontoVector * ontoVector));

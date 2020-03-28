@@ -6,7 +6,7 @@
 
 /* === NODES === */
 
-/**  Initial town dimension */
+/** Initial town dimension */
 constexpr double DIM_MAX(1000.);
 /** Minimum safety distance for overlap detection */
 constexpr double DIST_MIN(10.);
@@ -34,7 +34,7 @@ constexpr double INFINITE_TIME(1e100);
 
 /* === GRAPHICAL INTERFACE === */
 
-/** Inital canvas size (window size) */
+/** Initial canvas size (window size) */
 constexpr unsigned DEFAULT_DRAWING_SIZE(800);
 
 /* Zoom step (incrementation) */
