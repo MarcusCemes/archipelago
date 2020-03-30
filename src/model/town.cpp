@@ -1,7 +1,6 @@
 // archipelago - model/town.cpp
 // Town-related logic, such as ENJ, CI and MTA calculations
 
-// #include <cmath>
 #include "town.hpp"
 
 #include <array>     // inline for loop

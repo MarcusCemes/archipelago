@@ -3,6 +3,7 @@
 
 #include <iostream>
 
+#include "gui.hpp"
 #include "model/town.hpp"
 
 using namespace std;
@@ -14,5 +15,5 @@ int main(int argc, char *argv[]) {
     town::start();
   }
 
-  return 0;
+  return gui::run();
 }

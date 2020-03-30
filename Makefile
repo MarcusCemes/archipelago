@@ -19,9 +19,9 @@ LDFLAGS       :=
 DFLAGS        := -g3 -O0 -DDEBUG
 
 # Setup external libraries, treating as system headers supresses warnings
-# INC           ?= gtkmm-3.0
-# CXXINC        := $(shell pkg-config --cflags $(INC) | sed -e 's/ -I/ -isystem /g')
-# LDINC         := $(shell pkg-config --libs $(INC))
+INC           ?= gtkmm-3.0
+CXXINC        := $(shell pkg-config --cflags $(INC) | sed -e 's/ -I/ -isystem /g')
+LDINC         := $(shell pkg-config --libs $(INC))
 
 # Colour output
 ESCAPE        := \e
