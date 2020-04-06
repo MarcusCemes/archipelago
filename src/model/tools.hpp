@@ -8,6 +8,9 @@
 
 namespace tools {
 
+/** Constants that represent rendering colours */
+enum Colour { BLACK, GREEN };
+
 /* === VECTOR === */
 
 /**
@@ -52,6 +55,47 @@ Vec2 operator*(const Vec2 vector, const double& factor);
 /** Calculates the dot product between two vectors */
 double operator*(const Vec2 vector1, const Vec2& vector2);
 std::ostream& operator<<(std::ostream& stream, const Vec2& vector);
+
+/* === RENDER HELPERS === */
+
+/** An immutable circle primitive */
+class Circle {
+ public:
+  Circle() = delete;
+  Circle(const Vec2& position, const unsigned radius);
+  const Vec2& getPosition() const;
+  unsigned getRadius() const;
+
+ private:
+  Vec2 position;
+  unsigned radius;
+};
+
+/** An immutable line primitive */
+class Line {
+ public:
+  Line() = delete;
+  Line(const Vec2& pointA, const Vec2& pointB);
+  const Vec2& getPointA() const;
+  const Vec2& getPointB() const;
+
+ private:
+  Vec2 pointA;
+  Vec2 pointB;
+};
+
+/** An abstract class that can be implemented by a renderer */
+class RenderContext {
+ public:
+  virtual void draw(const Circle& circle) = 0;
+  virtual void draw(const Line& line) = 0;
+  virtual void setColour(const Colour& colour) = 0;
+};
+
+/** An abstract class of an object that can be rendered */
+class Renderable {
+  virtual void render(tools::RenderContext& context) const = 0;
+};
 
 /* === FUNCTIONS === */
 

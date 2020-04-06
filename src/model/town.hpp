@@ -10,6 +10,7 @@
 #include <vector>
 
 #include "node.hpp"
+#include "tools.hpp"
 
 namespace town {
 
@@ -23,10 +24,12 @@ namespace town {
  * errors if a physically incorrect situation arrives, such as a duplicate node uid
  * or a superposition between town members.
  */
-class Town {
+class Town : public tools::Renderable {
  public:
   Town(std::vector<node::Node> nodes = std::vector<node::Node>(),
        std::vector<node::Link> links = std::vector<node::Link>());
+
+  void render(tools::RenderContext& context) const override;
 
   /* Accessors/Manipulators */
 
@@ -89,10 +92,10 @@ class Town {
 /* === FUNCTIONS === */
 
 /** Start with an empty town */
-void start();
+Town start();
 
 /** Read the given file and parse the town */
-void start(char* path);
+Town start(char* path);
 
 }  // namespace town
 

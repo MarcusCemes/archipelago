@@ -76,6 +76,19 @@ std::ostream& operator<<(std::ostream& stream, const Vec2& vector) {
   return stream;
 }
 
+/** === RENDER HELPERS === */
+
+Circle::Circle(const Vec2& position, const unsigned radius)
+    : position(position), radius(radius) {}
+
+const Vec2& Circle::getPosition() const { return position; }
+unsigned Circle::getRadius() const { return radius; }
+
+Line::Line(const Vec2& pointA, const Vec2& pointB) : pointA(pointA), pointB(pointB) {}
+
+const Vec2& Line::getPointA() const { return pointA; }
+const Vec2& Line::getPointB() const { return pointB; }
+
 /* === FUNCTIONS === */
 
 double minPointLineDistance(const Vec2& point, const Vec2& lineA, const Vec2& lineB) {

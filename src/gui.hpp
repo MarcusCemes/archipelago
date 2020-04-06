@@ -6,7 +6,8 @@
 
 namespace gui {
 
-int run();
+int init();
+int init(char* path);
 
 }  // namespace gui
 
