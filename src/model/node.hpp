@@ -22,9 +22,12 @@ enum NodeType { HOUSING, TRANSPORT, PRODUCTION };
  * inconsistency is encountered, such as an incorrect capacity or invalid uid.
  * A Node has no conception of a town, and will not check for duplicate ids.
  */
-class Node {
+class Node : public tools::Renderable {
  public:
+  Node() = delete;
   Node(NodeType type, unsigned uid, tools::Vec2 position, unsigned capacity);
+
+  void render(tools::RenderContext& context) const override;
 
   /* Accessors/Manipulators */
 
@@ -64,10 +67,12 @@ class Node {
  * If the uids are equivalent, the constructor will throw an error. This class is
  * overloaded with the `==` operator to allow easy link-link comparisons.
  */
-class Link {
+class Link : public tools::Renderable {
  public:
   Link() = delete;
   Link(unsigned uid0, unsigned uid1);
+
+  void render(tools::RenderContext& context) const override;
 
   /* Accessors/Manipulators */
 

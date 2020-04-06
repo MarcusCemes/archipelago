@@ -10,10 +10,8 @@ using namespace std;
 
 int main(int argc, char *argv[]) {
   if (argc >= 2) {
-    town::start(argv[1]);
+    return gui::init(argv[1]);
   } else {
-    town::start();
+    return gui::init();
   }
-
-  return gui::run();
 }

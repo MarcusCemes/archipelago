@@ -64,6 +64,16 @@ Town::Town(Nodes nodes, Links links) {
   }
 }
 
+void Town::render(tools::RenderContext& ctx) const {
+  for (const auto& link : links) {
+    link.render(ctx);
+  }
+  for (const auto& node : nodes) {
+    node.second.render(ctx);
+  }
+  // STUB
+}
+
 void Town::addNode(const Node& node, const double safetyDistance) {
   const unsigned uid(node.getUid());
 
@@ -214,21 +224,16 @@ void Town::checkNodeSuperposition(const Node& testNode, const double safetyDista
 /* === FUNCTIONS === */
 
 /** Start a new town */
-void start() {
-  Town town;
-  // stub -> launch gui
-}
+Town start() { return Town(); }
 
 /** Load a town from a file, or create a new one if file does not exist */
-void start(char* path) {
+Town start(char* path) {
   std::ifstream file(path);
   if (file.is_open()) {
-    Town town(parseTown(file, true));
-    // stub -> launch gui
+    return Town(parseTown(file, true));
   } else {
     std::cerr << "Error: Could not open file" << std::endl;
-    Town town;
-    // stub -> launch gui
+    return Town();
   }
 }
 

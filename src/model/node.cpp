@@ -3,7 +3,7 @@
 
 #include "node.hpp"
 
-#include <math.h>
+#include <cmath>
 
 #include "constants.hpp"
 #include "error.hpp"
@@ -19,6 +19,11 @@ Node::Node(NodeType type, unsigned newUid, tools::Vec2 position,
     : type(type), position(position) {
   setUid(newUid);
   setCapacity(initialCapacity);
+}
+
+/** STUB */
+void Node::render(tools::RenderContext& ctx) const {
+  ctx.draw(tools::Circle(position, radius()));
 }
 
 unsigned Node::getUid() const { return uid; }
@@ -45,6 +50,10 @@ double Node::radius() const { return sqrt(capacity); }
 /* == Link == */
 
 Link::Link(unsigned uid0, unsigned uid1) { setUids(uid0, uid1); }
+
+void Link::render(tools::RenderContext& ctx) const {
+  // STUB
+}
 
 unsigned Link::getUid0() const { return uid0; }
 unsigned Link::getUid1() const { return uid1; }
