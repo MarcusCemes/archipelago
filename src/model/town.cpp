@@ -4,6 +4,7 @@
 #include "town.hpp"
 
 #include <array>     // inline for loop
+#include <cctype>    // isspace()
 #include <fstream>   // istream
 #include <iostream>  // cerr
 #include <limits>    // numeric_limits
@@ -33,7 +34,6 @@ using town::Town;
 namespace {
 
 constexpr char COMMENT_DELIMITER('#');
-constexpr char SPACE_CHAR(' ');
 
 constexpr unsigned ERROR_EXIT_CODE(1);
 
@@ -347,8 +347,14 @@ std::stringstream getNextLine(std::istream& stream) {
     line = line.substr(0, commentPos);
   }
 
-  bool hasContent(line.length() != 0 &&
-                  line.find_first_not_of(SPACE_CHAR) != string::npos);
+  // search for non-whitespace character
+  bool hasContent(false);
+  for (const char& stringChar : line) {
+    if (!isspace(stringChar)) {
+      hasContent = true;
+      break;
+    }
+  }
 
   // skip empty lines
   if (!hasContent) {
