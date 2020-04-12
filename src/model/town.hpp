@@ -91,11 +91,8 @@ class Town : public tools::Renderable {
 
 /* === FUNCTIONS === */
 
-/** Start with an empty town */
-Town start();
-
 /** Read the given file and parse the town */
-Town start(char* path);
+Town loadFromFile(const std::string& path);
 
 }  // namespace town
 

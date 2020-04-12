@@ -4,10 +4,12 @@
 #ifndef GUI_H
 #define GUI_H
 
+#include <memory>
+#include <string>
+
 namespace gui {
 
-int init();
-int init(char* path);
+int init(const std::unique_ptr<std::string>& path);
 
 }  // namespace gui
 
