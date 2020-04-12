@@ -4,21 +4,21 @@
 #include "gui.hpp"
 
 #include <gtkmm/application.h>
-#include <gtkmm/box.h>
+#include <gtkmm/box.h>  // control housing
 #include <gtkmm/button.h>
-#include <gtkmm/buttonbox.h>
-#include <gtkmm/filechooserdialog.h>
-#include <gtkmm/frame.h>
-#include <gtkmm/grid.h>
-#include <gtkmm/label.h>  // zoom indicator
+#include <gtkmm/buttonbox.h>          // control housing
+#include <gtkmm/filechooserdialog.h>  // file picker
+#include <gtkmm/frame.h>              // control housing
+#include <gtkmm/grid.h>               // main content layout
+#include <gtkmm/label.h>              // zoom level
 #include <gtkmm/messagedialog.h>
 #include <gtkmm/window.h>
-#include <sigc++/connection.h>
-#include <sigc++/functors/mem_fun.h>
-#include <sigc++/signal.h>
+#include <sigc++/connection.h>        // data store
+#include <sigc++/functors/mem_fun.h>  // data store
+#include <sigc++/signal.h>            // data store
 
 #include <memory>   // shared_ptr
-#include <sstream>  // double formatting
+#include <sstream>  // floating point formatting
 #include <string>
 
 #include "graphics.hpp"
@@ -31,9 +31,10 @@ namespace {
 constexpr int PADDING(4);
 constexpr double INITIAL_ZOOM(1.0);
 
-/** DELTA_ZOOM is not perfectly representable as a double */
+/** DELTA_ZOOM is not perfectly representable as a binary floating point number */
 constexpr double ZOOM_ERROR(1E-10);
 
+/** Actions that can be triggered by the interface and dispatched to the store */
 enum Action {
   EXIT,
   NEW,
@@ -49,6 +50,14 @@ enum Action {
 typedef sigc::signal<void> UpdateSignal;
 typedef sigc::signal<void, Action> ActionSignal;
 
+/**
+ * The application data store. Contains pointers to data structures as well as simple
+ * interface state. Two event streams (signals) are exposed that allow widgets to
+ * subscribe to data changes or dispatch events.
+ *
+ * The update change signifies that the GUI should be updated to match the store,
+ * and the action stream publishes actions that should be processed by the controller.
+ */
 class Store {
  public:
   Store();
@@ -57,7 +66,6 @@ class Store {
   ActionSignal getActionSignal();
 
   std::shared_ptr<town::Town> getTown();
-  // std::shared_ptr<graphics::TownView> getTownView();
 
   double getZoomFactor() const;
   double getEnj() const;
@@ -74,7 +82,6 @@ class Store {
   ActionSignal actionSignal;
 
   std::shared_ptr<town::Town> town;
-  // std::shared_ptr<graphics::TownView> townView;
 
   double zoomFactor;
   double enj;
@@ -82,8 +89,30 @@ class Store {
   double mta;
 };
 
+/** Shorthand to a C++11 shared pointer of a store instance */
 typedef std::shared_ptr<Store> SharedStore;
 
+/**
+ * Abstract class that subscribes to a stores update stream, and calls the onUpdate()
+ * method with a shared pointer to the store.
+ */
+class Subscription {
+ public:
+  Subscription() = delete;
+  Subscription(SharedStore& store);
+  ~Subscription();
+
+ protected:
+  virtual void onUpdate(SharedStore& store) = 0;
+
+ private:
+  SharedStore store;
+  sigc::connection connection;
+
+  void triggerUpdate();
+};
+
+/** The brain of the GUI, handles actions and updates the central store. */
 class Controller {
  public:
   Controller() = delete;
@@ -103,6 +132,7 @@ class Controller {
   void openTown();
 };
 
+/** Extended Gtk::Button that also dispatches actions to the store */
 class Button : public Gtk::Button {
  public:
   Button() = delete;
@@ -110,12 +140,14 @@ class Button : public Gtk::Button {
   ~Button();
 
  private:
+  /** The saved action to dispatch */
   Action action;
   SharedStore store;
   sigc::connection connection;
   void handleClick();
 };
 
+/** Extended Gtk::Frame with an internal Gtk::Box and better padding */
 class Group : public Gtk::Frame {
  public:
   Group() = delete;
@@ -127,19 +159,17 @@ class Group : public Gtk::Frame {
   Gtk::ButtonBox buttonBox;
 };
 
-class ZoomIndicator : public Gtk::Label {
+/** Live data element that displays the zoom level */
+class ZoomLevel : public Gtk::Label, public Subscription {
  public:
-  ZoomIndicator() = delete;
-  ZoomIndicator(SharedStore& store);
-  ~ZoomIndicator();
-
-  void update();
+  ZoomLevel() = delete;
+  ZoomLevel(SharedStore& store);
 
  private:
-  SharedStore store;
-  sigc::connection connection;
+  void onUpdate(SharedStore& store) override;
 };
 
+/** Application sidebar that houses the controls */
 class Sidebar : public Gtk::Box {
  public:
   Sidebar() = delete;
@@ -151,7 +181,7 @@ class Sidebar : public Gtk::Box {
   Group editorGroup;
   Group infoGroup;
 
-  ZoomIndicator zoomIndicator;
+  ZoomLevel zoomIndicator;
 
   Button exitButton;
   Button newButton;
@@ -164,18 +194,16 @@ class Sidebar : public Gtk::Box {
   Button editLinkButton;
 };
 
-class Viewport : public graphics::TownView {
+/** Extended graphics::TownView that subscribes to the data store */
+class Viewport : public graphics::TownView, public Subscription {
  public:
+  Viewport() = delete;
   Viewport(SharedStore& store);
-  ~Viewport();
 
-  void updateZoom();
-
- private:
-  SharedStore store;
-  sigc::connection connection;
+  void onUpdate(SharedStore& store) override;
 };
 
+/** The main application window */
 class Window : public Gtk::Window {
  public:
   Window();
@@ -195,6 +223,7 @@ namespace gui {
 
 /* === FUNCTIONS === */
 
+/** Main application entry point that creates a GUI and runs the application */
 int init(const std::unique_ptr<std::string>& path) {
   auto app(Gtk::Application::create("ch.epfl.archipelago-301366_301070"));
   Window window;
@@ -209,6 +238,8 @@ int init(const std::unique_ptr<std::string>& path) {
 namespace {
 
 /* === DATA === */
+
+/* == Store == */
 
 Store::Store()
     : town(new town::Town()), zoomFactor(INITIAL_ZOOM), enj(0), ci(0), mta(0) {}
@@ -225,6 +256,18 @@ void Store::setEnj(double newValue) { enj = newValue; }
 void Store::setCi(double newValue) { ci = newValue; }
 void Store::setMta(double newValue) { mta = newValue; }
 void Store::setZoomFactor(double newValue) { zoomFactor = newValue; }
+
+/* == Subscription == */
+
+Subscription::Subscription(SharedStore& store)
+    : store(store),
+      connection(store->getUpdateSignal().connect(
+          sigc::mem_fun(*this, &Subscription::triggerUpdate))) {}
+Subscription::~Subscription() { connection.disconnect(); }
+
+void Subscription::triggerUpdate() { onUpdate(store); }
+
+/* == Controller == */
 
 Controller::Controller(Gtk::Window& window)
     : store(new Store()),
@@ -302,6 +345,8 @@ void Controller::loadTown(const std::string& path) {
 
 /* === LAYOUT === */
 
+/* == Button == */
+
 Button::Button(const std::string& text, SharedStore& store, const Action& action)
     : Gtk::Button(text),
       action(action),
@@ -311,6 +356,8 @@ Button::Button(const std::string& text, SharedStore& store, const Action& action
 Button::~Button() { connection.disconnect(); }
 
 void Button::handleClick() { store->getActionSignal().emit(action); }
+
+/* == Group == */
 
 Group::Group(const std::string& label)
     : Frame(label), buttonBox(Gtk::ORIENTATION_VERTICAL) {
@@ -325,21 +372,19 @@ Group::Group(const std::string& label)
 
 void Group::add(Widget& widget) { buttonBox.add(widget); }
 
-ZoomIndicator::ZoomIndicator(SharedStore& store)
-    : store(store),
-      connection(store->getUpdateSignal().connect(
-          sigc::mem_fun(*this, &ZoomIndicator::update))) {
-  update();
-}
-ZoomIndicator::~ZoomIndicator() { connection.disconnect(); }
+/* == ZoomLevel == */
 
-void ZoomIndicator::update() {
+ZoomLevel::ZoomLevel(SharedStore& store) : Subscription(store) {}
+
+void ZoomLevel::onUpdate(SharedStore& store) {
   std::stringstream formatter;
   formatter.setf(std::ios::fixed);
-  formatter.precision(2);
+  formatter.precision(1);
   formatter << store->getZoomFactor();
   set_label("Zoom: x" + formatter.str());
 }
+
+/* == Sidebar == */
 
 Sidebar::Sidebar(SharedStore& store)
     : Box(Gtk::ORIENTATION_VERTICAL),
@@ -374,14 +419,14 @@ Sidebar::Sidebar(SharedStore& store)
   add(infoGroup);
 }
 
-Viewport::Viewport(SharedStore& store)
-    : store(store),
-      TownView(store->getTown(), INITIAL_ZOOM),
-      connection(store->getUpdateSignal().connect(
-          sigc::mem_fun(*this, &Viewport::updateZoom))) {}
-Viewport::~Viewport() { connection.disconnect(); }
+/* == Viewport == */
 
-void Viewport::updateZoom() { setZoom(store->getZoomFactor()); };
+Viewport::Viewport(SharedStore& store)
+    : Subscription(store), TownView(store->getTown(), INITIAL_ZOOM) {}
+
+void Viewport::onUpdate(SharedStore& store) { setZoom(store->getZoomFactor()); };
+
+/* == Window == */
 
 Window::Window()
     : controller(*this),

@@ -34,8 +34,8 @@ using town::Town;
 namespace {
 
 constexpr char COMMENT_DELIMITER('#');
-
 constexpr unsigned ERROR_EXIT_CODE(1);
+constexpr int NB_LINK_UIDS(2);
 
 typedef vector<Node> Nodes;
 typedef vector<Link> Links;
@@ -122,7 +122,7 @@ void Town::addLink(const Link& link) {
   }
 
   // Check that the link would not exceed the housing limit
-  std::array<unsigned, 2> uids{link.getUid0(), link.getUid1()};
+  std::array<unsigned, NB_LINK_UIDS> uids{link.getUid0(), link.getUid1()};
   for (const unsigned& uid : uids) {
     if (getNode(uid)->getType() == node::HOUSING) {
       if (getLinkedNodes(uid).size() >= MAX_LINK) throw error::max_link(uid);
@@ -229,7 +229,7 @@ void Town::checkNodeSuperposition(const Node& testNode, const double safetyDista
 Town loadFromFile(const std::string& path) {
   std::ifstream file(path);
   if (file.is_open()) {
-    return Town(parseTown(file, false));
+    return Town(parseTown(file, false)); // TODO remove quitting
   } else {
     std::cerr << "Error: Could not open file" << std::endl;
     return Town();
