@@ -51,9 +51,9 @@ double Node::radius() const { return sqrt(capacity); }
 
 Link::Link(unsigned uid0, unsigned uid1) { setUids(uid0, uid1); }
 
-void Link::render(tools::RenderContext& ctx) const {
-  // STUB
-}
+// void Link::render(tools::RenderContext& ctx) const {
+//   // STUB TODO remove
+// }
 
 unsigned Link::getUid0() const { return uid0; }
 unsigned Link::getUid1() const { return uid1; }

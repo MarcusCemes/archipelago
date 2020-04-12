@@ -6,6 +6,10 @@
 
 #include <gtkmm/drawingarea.h>
 #include <gtkmm/window.h>
+#include <sigc++/connection.h>
+#include <sigc++/signal.h>
+
+#include <memory>
 
 #include "model/tools.hpp"
 #include "model/town.hpp"
@@ -29,6 +33,9 @@ class CairoContext : public tools::RenderContext {
  private:
   /** A reference to the Cairo context to draw to */
   Cairo::RefPtr<Cairo::Context> cr;
+  tools::Colour colour;
+
+  void setSourceFromColour();
 };
 
 /**
@@ -39,15 +46,18 @@ class CairoContext : public tools::RenderContext {
  */
 class TownView : public Gtk::DrawingArea {
  public:
-  TownView(const town::Town& town);
-  void setTown(const town::Town& town);
+  TownView() = delete;
+  TownView(const std::shared_ptr<town::Town>& town, double initalZoom);
+
+  void setZoom(double zoom);
 
  protected:
   bool on_draw(const Cairo::RefPtr<Cairo::Context>& cr) override;
 
  private:
-  const town::Town* town = nullptr;
+  std::shared_ptr<town::Town> town;
   CairoContext context;
+  double zoomFactor;
 };
 
 }  // namespace graphics

@@ -67,12 +67,12 @@ class Node : public tools::Renderable {
  * If the uids are equivalent, the constructor will throw an error. This class is
  * overloaded with the `==` operator to allow easy link-link comparisons.
  */
-class Link : public tools::Renderable {
+class Link {
  public:
   Link() = delete;
   Link(unsigned uid0, unsigned uid1);
 
-  void render(tools::RenderContext& context) const override;
+  // void render(tools::RenderContext& context) const override; // TODO remove
 
   /* Accessors/Manipulators */
 

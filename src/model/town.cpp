@@ -66,7 +66,9 @@ Town::Town(Nodes nodes, Links links) {
 
 void Town::render(tools::RenderContext& ctx) const {
   for (const auto& link : links) {
-    link.render(ctx);
+    ctx.draw(tools::Line(getNode(link.getUid0())->getPosition(),
+                         getNode(link.getUid1())->getPosition()));
+    // link.render(ctx);
   }
   for (const auto& node : nodes) {
     node.second.render(ctx);
@@ -223,14 +225,11 @@ void Town::checkNodeSuperposition(const Node& testNode, const double safetyDista
 
 /* === FUNCTIONS === */
 
-/** Start a new town */
-Town start() { return Town(); }
-
 /** Load a town from a file, or create a new one if file does not exist */
-Town start(char* path) {
+Town loadFromFile(const std::string& path) {
   std::ifstream file(path);
   if (file.is_open()) {
-    return Town(parseTown(file, true));
+    return Town(parseTown(file, false));
   } else {
     std::cerr << "Error: Could not open file" << std::endl;
     return Town();
@@ -276,6 +275,8 @@ Town parseTown(std::istream& stream, bool quitOnError) {
     if (quitOnError == true) {
       std::cout << error;
       exit(ERROR_EXIT_CODE);
+    } else {
+      throw error;
     }
   }
 
