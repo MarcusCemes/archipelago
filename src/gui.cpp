@@ -28,13 +28,15 @@ namespace {
 
 /* === CONSTANTS, DECLARATIONS & PROTOTYPES === */
 
-constexpr int PADDING(4);
+constexpr int SPACING(4);
 constexpr double INITIAL_ZOOM(1.0);
 
-/** DELTA_ZOOM is not perfectly representable as a binary floating point number */
+/** DELTA_ZOOM is not perfectly representable as a binary floating point number
+ */
 constexpr double ZOOM_ERROR(1E-10);
 
-/** Actions that can be triggered by the interface and dispatched to the store */
+/** Actions that can be triggered by the interface and dispatched to the store
+ */
 enum Action {
   EXIT,
   NEW,
@@ -51,12 +53,13 @@ typedef sigc::signal<void> UpdateSignal;
 typedef sigc::signal<void, Action> ActionSignal;
 
 /**
- * The application data store. Contains pointers to data structures as well as simple
- * interface state. Two event streams (signals) are exposed that allow widgets to
- * subscribe to data changes or dispatch events.
+ * The application data store. Contains pointers to data structures as well as
+ * simple interface state. Two event streams (signals) are exposed that allow
+ * widgets to subscribe to data changes or dispatch events.
  *
- * The update change signifies that the GUI should be updated to match the store,
- * and the action stream publishes actions that should be processed by the controller.
+ * The update change signifies that the GUI should be updated to match the
+ * store, and the action stream publishes actions that should be processed by
+ * the controller.
  */
 class Store {
  public:
@@ -93,8 +96,8 @@ class Store {
 typedef std::shared_ptr<Store> SharedStore;
 
 /**
- * Abstract class that subscribes to a stores update stream, and calls the onUpdate()
- * method with a shared pointer to the store.
+ * Abstract class that subscribes to a stores update stream, and calls the
+ * onUpdate() method with a shared pointer to the store.
  */
 class Subscription {
  public:
@@ -156,14 +159,44 @@ class Group : public Gtk::Frame {
   void add(Widget& widget);
 
  private:
-  Gtk::ButtonBox buttonBox;
+  Gtk::Box buttonBox;
 };
 
 /** Live data element that displays the zoom level */
-class ZoomLevel : public Gtk::Label, public Subscription {
+class ZoomLabel : public Gtk::Label, public Subscription {
  public:
-  ZoomLevel() = delete;
-  ZoomLevel(SharedStore& store);
+  ZoomLabel() = delete;
+  ZoomLabel(SharedStore& store);
+
+ private:
+  void onUpdate(SharedStore& store) override;
+};
+
+/** Live data element that displays the enj statistic */
+class EnjLabel : public Gtk::Label, public Subscription {
+ public:
+  EnjLabel() = delete;
+  EnjLabel(SharedStore& store);
+
+ private:
+  void onUpdate(SharedStore& store) override;
+};
+
+/** Live data element that displays the ci statistic */
+class CiLabel : public Gtk::Label, public Subscription {
+ public:
+  CiLabel() = delete;
+  CiLabel(SharedStore& store);
+
+ private:
+  void onUpdate(SharedStore& store) override;
+};
+
+/** Live data element that displays the mta statistic */
+class MtaLabel : public Gtk::Label, public Subscription {
+ public:
+  MtaLabel() = delete;
+  MtaLabel(SharedStore& store);
 
  private:
   void onUpdate(SharedStore& store) override;
@@ -181,7 +214,10 @@ class Sidebar : public Gtk::Box {
   Group editorGroup;
   Group infoGroup;
 
-  ZoomLevel zoomIndicator;
+  ZoomLabel zoomLabel;
+  EnjLabel enjLabel;
+  CiLabel ciLabel;
+  MtaLabel mtaLabel;
 
   Button exitButton;
   Button newButton;
@@ -320,7 +356,8 @@ void Controller::handleAction(const Action& action) {
 }
 
 void Controller::openTown() {
-  Gtk::FileChooserDialog dialog(*window, "Open a town", Gtk::FILE_CHOOSER_ACTION_OPEN);
+  Gtk::FileChooserDialog dialog(*window, "Open a town",
+                                Gtk::FILE_CHOOSER_ACTION_OPEN);
   dialog.add_button("_Cancel", Gtk::RESPONSE_CANCEL);
   dialog.add_button("Select", Gtk::RESPONSE_OK);
   const auto result = dialog.run();
@@ -347,12 +384,15 @@ void Controller::loadTown(const std::string& path) {
 
 /* == Button == */
 
-Button::Button(const std::string& text, SharedStore& store, const Action& action)
+Button::Button(const std::string& text, SharedStore& store,
+               const Action& action)
     : Gtk::Button(text),
       action(action),
       store(store),
-      connection(
-          signal_clicked().connect(sigc::mem_fun(*this, &Button::handleClick))) {}
+      connection(signal_clicked().connect(
+          sigc::mem_fun(*this, &Button::handleClick))) {
+  set_margin_bottom(SPACING);
+}
 Button::~Button() { connection.disconnect(); }
 
 void Button::handleClick() { store->getActionSignal().emit(action); }
@@ -361,27 +401,66 @@ void Button::handleClick() { store->getActionSignal().emit(action); }
 
 Group::Group(const std::string& label)
     : Frame(label), buttonBox(Gtk::ORIENTATION_VERTICAL) {
-  set_margin_left(PADDING);
-  set_margin_right(PADDING);
+  set_margin_left(SPACING);
+  set_margin_right(SPACING);
   Frame::add(buttonBox);
-  buttonBox.set_layout(Gtk::BUTTONBOX_EXPAND);
-  buttonBox.set_spacing(PADDING);
-  buttonBox.set_margin_left(PADDING);
-  buttonBox.set_margin_right(PADDING);
+  // buttonBox.set_homogeneous(true);
+  buttonBox.set_margin_left(SPACING);
+  buttonBox.set_margin_right(SPACING);
 }
 
 void Group::add(Widget& widget) { buttonBox.add(widget); }
 
-/* == ZoomLevel == */
+/* == ZoomLabel == */
 
-ZoomLevel::ZoomLevel(SharedStore& store) : Subscription(store) {}
+ZoomLabel::ZoomLabel(SharedStore& store) : Subscription(store) {}
 
-void ZoomLevel::onUpdate(SharedStore& store) {
+void ZoomLabel::onUpdate(SharedStore& store) {
   std::stringstream formatter;
   formatter.setf(std::ios::fixed);
   formatter.precision(1);
   formatter << store->getZoomFactor();
   set_label("Zoom: x" + formatter.str());
+  set_margin_bottom(SPACING);
+}
+
+/* == EnjLabel == */
+
+EnjLabel::EnjLabel(SharedStore& store) : Subscription(store) {}
+
+void EnjLabel::onUpdate(SharedStore& store) {
+  std::stringstream formatter;
+  formatter.setf(std::ios::fixed);
+  formatter.precision(4);
+  formatter << store->getEnj();
+  set_label("ENJ: " + formatter.str());
+  set_margin_bottom(SPACING);
+}
+
+/* == CiLabel == */
+
+CiLabel::CiLabel(SharedStore& store) : Subscription(store) {}
+
+void CiLabel::onUpdate(SharedStore& store) {
+  std::stringstream formatter;
+  formatter.setf(std::ios::scientific);
+  formatter.precision(5);
+  formatter << store->getZoomFactor();
+  set_label("CI: " + formatter.str());
+  set_margin_bottom(SPACING);
+}
+
+/* == MtaLabel == */
+
+MtaLabel::MtaLabel(SharedStore& store) : Subscription(store) {}
+
+void MtaLabel::onUpdate(SharedStore& store) {
+  std::stringstream formatter;
+  formatter.setf(std::ios::fixed);
+  formatter.precision(0);
+  formatter << store->getZoomFactor();
+  set_label("MTA: " + formatter.str());
+  set_margin_bottom(SPACING);
 }
 
 /* == Sidebar == */
@@ -392,7 +471,10 @@ Sidebar::Sidebar(SharedStore& store)
       displayGroup("Display"),
       editorGroup("Editor"),
       infoGroup("Information"),
-      zoomIndicator(store),
+      zoomLabel(store),
+      enjLabel(store),
+      ciLabel(store),
+      mtaLabel(store),
       exitButton("Exit", store, Action::EXIT),
       newButton("New", store, Action::NEW),
       openButton("Open", store, Action::OPEN),
@@ -410,8 +492,11 @@ Sidebar::Sidebar(SharedStore& store)
   displayGroup.add(zoomOutButton);
   displayGroup.add(zoomInButton);
   displayGroup.add(zoomResetButton);
-  displayGroup.add(zoomIndicator);
+  displayGroup.add(zoomLabel);
   editorGroup.add(editLinkButton);
+  infoGroup.add(enjLabel);
+  infoGroup.add(ciLabel);
+  infoGroup.add(mtaLabel);
 
   add(generalGroup);
   add(displayGroup);
@@ -424,7 +509,9 @@ Sidebar::Sidebar(SharedStore& store)
 Viewport::Viewport(SharedStore& store)
     : Subscription(store), TownView(store->getTown(), INITIAL_ZOOM) {}
 
-void Viewport::onUpdate(SharedStore& store) { setZoom(store->getZoomFactor()); };
+void Viewport::onUpdate(SharedStore& store) {
+  setZoom(store->getZoomFactor());
+};
 
 /* == Window == */
 
@@ -432,7 +519,6 @@ Window::Window()
     : controller(*this),
       sidebar(controller.getStore()),
       viewport(controller.getStore()) {
-  // set_default_size(DEFAULT_DRAWING_SIZE, DEFAULT_DRAWING_SIZE);
   set_title("Archipelago Town Editor");
 
   viewport.set_hexpand(true);
