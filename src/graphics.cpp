@@ -19,7 +19,6 @@ constexpr double D_PI(PI * 2);
 constexpr int TWO(2);
 
 constexpr double WHITE[3]{1., 1., 1.};
-constexpr double GREY[3]{.95, .95, .95};
 constexpr double GREEN[3]{0., 1., 0.};
 constexpr double BLACK[3]{0., 0., 0.};
 
@@ -27,8 +26,6 @@ constexpr double BLACK[3]{0., 0., 0.};
 
 TownView::TownView(const std::shared_ptr<town::Town>& town, double initialZoom)
     : town(town), zoomFactor(initialZoom) {}
-
-// void TownView::setTown(const town::Town& newTown) { town = &newTown; }
 
 bool TownView::on_draw(const Cairo::RefPtr<Cairo::Context>& cr) {
   Gtk::Allocation allocation = get_allocation();
@@ -40,7 +37,7 @@ bool TownView::on_draw(const Cairo::RefPtr<Cairo::Context>& cr) {
 
   context.setContext(cr);
   cr->save();
-  cr->set_source_rgb(GREY[0], GREY[1], GREY[2]);
+  cr->set_source_rgb(WHITE[0], WHITE[1], WHITE[2]);
   cr->paint();
   cr->restore();
 
@@ -65,7 +62,7 @@ void CairoContext::draw(const tools::Circle& obj) {
 
   cr->save();
   cr->arc(position.getX(), position.getY(), obj.getRadius(), ZERO, D_PI);
-  cr->set_source_rgb(GREY[0], GREY[1], GREY[2]);
+  cr->set_source_rgb(WHITE[0], WHITE[1], WHITE[2]);
   cr->fill_preserve();
   setSourceFromColour();
   cr->stroke();
