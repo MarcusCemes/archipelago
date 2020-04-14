@@ -23,6 +23,7 @@ namespace graphics {
  */
 class CairoContext : public tools::RenderContext {
  public:
+  CairoContext();
   void setContext(const Cairo::RefPtr<Cairo::Context>& context);
 
   /* Inherited methods */
