@@ -53,6 +53,8 @@ void TownView::setZoom(double newZoom) {
 
 /* == Cairo context == */
 
+CairoContext::CairoContext() : colour(tools::Colour::BLACK) {}
+
 void CairoContext::setContext(const Cairo::RefPtr<Cairo::Context>& newContext) {
   cr = newContext;
 }
@@ -77,7 +79,9 @@ void CairoContext::draw(const tools::Line& obj) {
   cr->restore();
 }
 
-void CairoContext::setColour(const tools::Colour& newColour) { colour = newColour; }
+void CairoContext::setColour(const tools::Colour& newColour) {
+  colour = newColour;
+}
 
 void CairoContext::setSourceFromColour() {
   switch (colour) {
