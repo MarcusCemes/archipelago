@@ -42,6 +42,9 @@ class Town : public tools::Renderable {
   /** Returns a constant pointer to the node instance, or nullptr */
   const node::Node* getNode(const unsigned uid) const;
 
+  /** Returns a non-constant pointer to the node instance, or nullptr */
+  node::Node* getModifiableNode(const unsigned uid);
+
   /** Returns a list of node uids that are a part of the town */
   std::vector<unsigned> getNodes() const;
 
@@ -65,6 +68,11 @@ class Town : public tools::Renderable {
 
   /** Removes a link from the town. Does not check if the link exists */
   void removeLink(const node::Link& link);
+
+  double enj();
+  double ci();
+  double mta();
+  unsigned pathFind(const node::NodeType& type);
 
  private:
   /* Attributes */

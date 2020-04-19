@@ -68,12 +68,10 @@ void Town::render(tools::RenderContext& ctx) const {
   for (const auto& link : links) {
     ctx.draw(tools::Line(getNode(link.getUid0())->getPosition(),
                          getNode(link.getUid1())->getPosition()));
-    // link.render(ctx);
   }
   for (const auto& node : nodes) {
     node.second.render(ctx);
   }
-  // STUB
 }
 
 void Town::addNode(const Node& node, const double safetyDistance) {
@@ -90,6 +88,13 @@ void Town::addNode(const Node& node, const double safetyDistance) {
 }
 
 const Node* Town::getNode(const unsigned uid) const {
+  auto node(nodes.find(uid));
+
+  if (node == nodes.end()) return nullptr;
+  return &(node->second);
+}
+
+Node* Town::getModifiableNode(const unsigned uid) {
   auto node(nodes.find(uid));
 
   if (node == nodes.end()) return nullptr;
@@ -165,6 +170,156 @@ void Town::removeLink(const Link& link) {
   }
 }
 
+double Town::enj() {
+  double nbp_L(0.0), nbp_T(0.0), nbp_P(0.0);
+  if (nodes.size() > 0) {
+    for (const auto& townNode : nodes) {
+      if (townNode.second.getType() == node::HOUSING)
+        nbp_L += townNode.second.getCapacity();
+      if (townNode.second.getType() == node::TRANSPORT)
+        nbp_T += townNode.second.getCapacity();
+      if (townNode.second.getType() == node::PRODUCTION)
+        nbp_P += townNode.second.getCapacity();
+      return (nbp_L - (nbp_P + nbp_T)) / (nbp_L + nbp_T + nbp_P);
+    }
+    if (nodes.size() == 0) return 0.0;
+  }
+}
+
+double Town::ci() {
+  double CI(0.0);
+  for (const auto& townLink : links) {
+    double dist(0.0), capacite(0.0), vitesse(0.0);
+    dist = (getNode(townLink.getUid0())->getPosition() -
+            getNode(townLink.getUid1())->getPosition())
+               .norm();
+    capacite = std::min(getNode(townLink.getUid0())->getCapacity(),
+                        getNode(townLink.getUid1())->getCapacity());
+    if (getNode(townLink.getUid0())->getType() == node::TRANSPORT &&
+        getNode(townLink.getUid1())->getType() == node::TRANSPORT)
+      vitesse = FAST_SPEED;
+    else
+      vitesse = DEFAULT_SPEED;
+    CI += dist * capacite * vitesse;
+  }
+  return CI;
+}
+
+double Town::mta() {
+  pathFind(node::TRANSPORT);
+  double mtaTransport(0.0);
+  if (pathFind(node::TRANSPORT) != NO_LINK) {  // Calcul de mtaTransport
+    for (const auto& townNode : nodes) {
+      if ((getNode(townNode.second.getParent())->getType() == node::TRANSPORT) &&
+          (townNode.second.getType() == node::TRANSPORT)) {
+        mtaTransport += ((getNode(townNode.second.getParent())->getPosition() -
+                          (townNode.second.getPosition()))
+                             .norm()) /
+                        FAST_SPEED;
+      } else {
+        mtaTransport = ((getNode(townNode.second.getParent())->getPosition() -
+                         (townNode.second.getPosition()))
+                            .norm()) /
+                       DEFAULT_SPEED;
+      }
+    }
+  } else
+    mtaTransport = INFINITE_TIME;
+  double mtaProduction(0.0);
+  if (pathFind(node::TRANSPORT) != NO_LINK) {  // Calcul de mtaProduction
+    for (const auto& townNode : nodes) {
+      if ((getNode(townNode.second.getParent())->getType() ==
+           node::PRODUCTION) &&  // Calcul temps_acces
+          (townNode.second.getType() == node::PRODUCTION)) {
+        mtaTransport += ((getNode(townNode.second.getParent())->getPosition() -
+                          (townNode.second.getPosition()))
+                             .norm()) /
+                        FAST_SPEED;
+      } else {
+        mtaTransport = ((getNode(townNode.second.getParent())->getPosition() -
+                         (townNode.second.getPosition()))
+                            .norm()) /
+                       DEFAULT_SPEED;
+      }
+    }
+  } else
+    mtaProduction = INFINITE_TIME;
+  return mtaTransport + mtaProduction;
+}
+
+unsigned Town::pathFind(const node::NodeType& type) {
+  for (auto& townNode : nodes) {
+    townNode.second.setIn(true);
+    townNode.second.setAccess(INFINITE_TIME);
+    townNode.second.setParent(NO_LINK);
+  }
+  bool first_housing(true);
+  unsigned d;
+  for (auto& townNode : nodes) {
+    if (first_housing) {
+      if (townNode.second.getType() == node::HOUSING) {
+        d = townNode.first;
+        townNode.second.setAccess(0);
+        first_housing = false;
+      }
+    }
+  }
+  vector<unsigned> TA(nodes.size());
+  TA[0] = d;
+  for (unsigned i(0); i < TA.size(); ++i) {
+    if (getNode(i)->getUid() != d) {
+      TA.push_back(getNode(i)->getUid());
+    } else {
+      i += 1;
+      TA.push_back(getNode(i)->getUid());
+    }
+  }
+  while (nodes.size() != 0) {
+    unsigned indice(TA[0]);
+    for (unsigned i(1); i < TA.size(); ++i) {
+      if (TA[i] < indice) indice = TA[i];
+    }
+    getModifiableNode(indice)->setIn(true);
+    if (getNode(indice)->getType() == type) return indice;
+    getModifiableNode(indice)->setIn(false);
+    for (const auto& nodeNeighbour : getLinkedNodes(indice)) {
+      double temps_acces(0.0);
+      if (getNode(nodeNeighbour)->getIn() == true) {
+        if ((getNode(nodeNeighbour)->getType() ==
+             node::TRANSPORT) &&  // Calcul temps_acces
+            getNode(indice)->getType() == node::TRANSPORT) {
+          temps_acces =
+              ((getNode(nodeNeighbour)->getPosition() - getNode(indice)->getPosition())
+                   .norm()) /
+              FAST_SPEED;
+        } else {
+          temps_acces =
+              ((getNode(nodeNeighbour)->getPosition() - getNode(indice)->getPosition())
+                   .norm()) /
+              DEFAULT_SPEED;
+        }
+        double alt(getNode(indice)->getAccess() +
+                   temps_acces);  // + compute_access(TN,n,lv)
+        if (getModifiableNode(nodeNeighbour)->getAccess() > alt) {
+          getModifiableNode(nodeNeighbour)->setAccess(alt);
+          getModifiableNode(nodeNeighbour)->setParent(indice);
+          for (unsigned int i(1); i < TA.size();
+               ++i) {  // Algorithme de tri par insértion
+            unsigned memory(getNode(TA[i])->getAccess());
+            unsigned j(i);
+            while ((j > 0) && (getNode(TA[j - 1])->getAccess() > memory)) {
+              TA[j] = TA[j - 1];
+              j -= 1;
+            }
+            TA[j] = memory;
+          }  // Fin du tri par insértion
+        }
+      }
+    }
+  }
+  return NO_LINK;
+}
+
 /* == Private members == */
 
 /** Checks whether the given node intersects any town links */
@@ -229,7 +384,7 @@ void Town::checkNodeSuperposition(const Node& testNode, const double safetyDista
 Town loadFromFile(const std::string& path) {
   std::ifstream file(path);
   if (file.is_open()) {
-    return Town(parseTown(file, false)); // TODO remove quitting
+    return Town(parseTown(file, false));  // TODO remove quitting
   } else {
     std::cerr << "Error: Could not open file" << std::endl;
     return Town();

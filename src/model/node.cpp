@@ -47,6 +47,15 @@ void Node::setCapacity(unsigned newCapacity) {
 
 double Node::radius() const { return sqrt(capacity); }
 
+bool Node::getIn() const { return in; }
+void Node::setIn(bool newIn) { in = newIn; }
+
+double Node::getAccess() const { return access; }
+void Node::setAccess(double newAccess) { access = newAccess; }
+
+double Node::getParent() const { return parent; }
+void Node::setParent(unsigned newParent) { parent = newParent; }
+
 /* == Link == */
 
 Link::Link(unsigned uid0, unsigned uid1) { setUids(uid0, uid1); }
