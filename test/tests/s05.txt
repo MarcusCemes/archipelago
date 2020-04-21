@@ -1,0 +1,23 @@
+# correct file: more than max_link to trasport and to production nodes
+
+3	# housing
+	15 500 0 28000
+	16 -500 0 28000
+	2 -459 -410 18063
+
+2	# transport
+	14 0 -30 25000
+	24 300 300 25000
+
+1	# production
+	1 3 -425 14360
+
+8	# links
+	14 15
+	 1 15
+	14 16
+	 1 16
+	 2 16
+	14 24
+	 1 14
+  	 1  2

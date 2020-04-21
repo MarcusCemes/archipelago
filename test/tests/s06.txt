@@ -1,0 +1,12 @@
+# correct file: node not colliding 
+
+1	# housing
+	1 0 0 10000
+
+1	# transport
+	2 0 200.001 10000
+
+0	# production
+
+1	# links
+	1 2

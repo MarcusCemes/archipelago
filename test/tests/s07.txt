@@ -1,0 +1,17 @@
+# correct file: node/link not colliding 
+
+# nb housing
+3
+	1 500 0 10000
+	2 -500 0 10000
+	3 0 100.1 10000
+
+# nb transport
+0
+
+# nb production
+0
+
+# nb link
+1
+	1 2
