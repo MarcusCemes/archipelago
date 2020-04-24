@@ -206,108 +206,105 @@ double Town::ci() {
 }
 
 double Town::mta() {
-  pathFind(node::TRANSPORT);
-  double mtaTransport(0.0);
-  if (pathFind(node::TRANSPORT) != NO_LINK) {  // Calcul de mtaTransport
-    for (const auto& townNode : nodes) {
-      if ((getNode(townNode.second.getParent())->getType() == node::TRANSPORT) &&
-          (townNode.second.getType() == node::TRANSPORT)) {
-        mtaTransport += ((getNode(townNode.second.getParent())->getPosition() -
-                          (townNode.second.getPosition()))
-                             .norm()) /
-                        FAST_SPEED;
-      } else {
-        mtaTransport = ((getNode(townNode.second.getParent())->getPosition() -
-                         (townNode.second.getPosition()))
-                            .norm()) /
-                       DEFAULT_SPEED;
+  double mta(0.0);
+  for (const auto& townNode : nodes) {
+    double mtaTransport(0.0);
+    pathFind(node::TRANSPORT, townNode.first);  // modifié
+    if (pathFind(node::TRANSPORT, townNode.first) !=
+        NO_LINK) {  // Calcul de mtaTransport // modifié
+      for (const auto& townNode : nodes) {
+        if (((*getNode(townNode.second.getParent())).getType() == node::TRANSPORT) &&
+            (townNode.second.getType() == node::TRANSPORT)) {
+          mtaTransport += (((*getNode(townNode.second.getParent())).getPosition() -
+                            (townNode.second.getPosition()))
+                               .norm()) /
+                          FAST_SPEED;
+        } else {
+          mtaTransport = (((*getNode(townNode.second.getParent())).getPosition() -
+                           (townNode.second.getPosition()))
+                              .norm()) /
+                         DEFAULT_SPEED;
+        }
       }
-    }
-  } else
-    mtaTransport = INFINITE_TIME;
-  double mtaProduction(0.0);
-  if (pathFind(node::TRANSPORT) != NO_LINK) {  // Calcul de mtaProduction
-    for (const auto& townNode : nodes) {
-      if ((getNode(townNode.second.getParent())->getType() ==
-           node::PRODUCTION) &&  // Calcul temps_acces
-          (townNode.second.getType() == node::PRODUCTION)) {
-        mtaTransport += ((getNode(townNode.second.getParent())->getPosition() -
-                          (townNode.second.getPosition()))
-                             .norm()) /
-                        FAST_SPEED;
-      } else {
-        mtaTransport = ((getNode(townNode.second.getParent())->getPosition() -
-                         (townNode.second.getPosition()))
-                            .norm()) /
-                       DEFAULT_SPEED;
+    } else
+      mtaTransport = INFINITE_TIME;
+    double mtaProduction(0.0);
+    pathFind(node::PRODUCTION, townNode.first);  // modifié
+    if (pathFind(node::PRODUCTION, townNode.first) !=
+        NO_LINK) {  // Calcul de mtaProduction // modifié
+      for (const auto& townNode : nodes) {
+        if (((*getNode(townNode.second.getParent())).getType() ==
+             node::PRODUCTION) &&  // Calcul temps_acces
+            (townNode.second.getType() == node::PRODUCTION)) {
+          mtaTransport += (((*getNode(townNode.second.getParent())).getPosition() -
+                            (townNode.second.getPosition()))
+                               .norm()) /
+                          FAST_SPEED;
+        } else {
+          mtaTransport = (((*getNode(townNode.second.getParent())).getPosition() -
+                           (townNode.second.getPosition()))
+                              .norm()) /
+                         DEFAULT_SPEED;
+        }
       }
-    }
-  } else
-    mtaProduction = INFINITE_TIME;
-  return mtaTransport + mtaProduction;
+    } else
+      mtaProduction = INFINITE_TIME;
+    mta += mtaTransport + mtaProduction;  // modifié
+  }
+  return mta;  // modifié
 }
 
-unsigned Town::pathFind(const node::NodeType& type) {
+unsigned Town::pathFind(const node::NodeType& type, unsigned d) {
   for (auto& townNode : nodes) {
     townNode.second.setIn(true);
     townNode.second.setAccess(INFINITE_TIME);
     townNode.second.setParent(NO_LINK);
   }
-  bool first_housing(true);
-  unsigned d;
-  for (auto& townNode : nodes) {
-    if (first_housing) {
-      if (townNode.second.getType() == node::HOUSING) {
-        d = townNode.first;
-        townNode.second.setAccess(0);
-        first_housing = false;
-      }
-    }
-  }
-  vector<unsigned> TA(nodes.size());
+  (*getModifiableNode(d)).setAccess(0);  // modifié
+  vector<unsigned> TA(getNodes().size());
   TA[0] = d;
-  for (unsigned i(0); i < TA.size(); ++i) {
-    if (getNode(i)->getUid() != d) {
-      TA.push_back(getNode(i)->getUid());
-    } else {
+  for (unsigned i(0); i < TA.size(); ++i)
+    if (getNodes()[i] != d)
+      TA.push_back(getNodes()[i]);
+    else {
       i += 1;
-      TA.push_back(getNode(i)->getUid());
+      TA.push_back(getNodes()[i]);
     }
-  }
   while (nodes.size() != 0) {
     unsigned indice(TA[0]);
     for (unsigned i(1); i < TA.size(); ++i) {
-      if (TA[i] < indice) indice = TA[i];
+      if ((*getNode(TA[i])).getAccess() < (*getNode(indice)).getAccess())
+        indice = TA[i];  // modifié
     }
-    getModifiableNode(indice)->setIn(true);
-    if (getNode(indice)->getType() == type) return indice;
-    getModifiableNode(indice)->setIn(false);
+    (*getModifiableNode(indice)).setIn(true);
+    if ((*getNode(indice)).getType() == type) return indice;
+    (*getModifiableNode(indice)).setIn(false);
     for (const auto& nodeNeighbour : getLinkedNodes(indice)) {
       double temps_acces(0.0);
-      if (getNode(nodeNeighbour)->getIn() == true) {
-        if ((getNode(nodeNeighbour)->getType() ==
+      if ((*getNode(nodeNeighbour)).getIn() == true) {
+        if (((*getNode(nodeNeighbour)).getType() ==
              node::TRANSPORT) &&  // Calcul temps_acces
-            getNode(indice)->getType() == node::TRANSPORT) {
-          temps_acces =
-              ((getNode(nodeNeighbour)->getPosition() - getNode(indice)->getPosition())
-                   .norm()) /
-              FAST_SPEED;
+            (*getNode(indice)).getType() == node::TRANSPORT) {
+          temps_acces = (((*getNode(nodeNeighbour)).getPosition() -
+                          (*getNode(indice)).getPosition())
+                             .norm()) /
+                        FAST_SPEED;
         } else {
-          temps_acces =
-              ((getNode(nodeNeighbour)->getPosition() - getNode(indice)->getPosition())
-                   .norm()) /
-              DEFAULT_SPEED;
+          temps_acces = (((*getNode(nodeNeighbour)).getPosition() -
+                          (*getNode(indice)).getPosition())
+                             .norm()) /
+                        DEFAULT_SPEED;
         }
-        double alt(getNode(indice)->getAccess() +
+        double alt((*getNode(indice)).getAccess() +
                    temps_acces);  // + compute_access(TN,n,lv)
-        if (getModifiableNode(nodeNeighbour)->getAccess() > alt) {
-          getModifiableNode(nodeNeighbour)->setAccess(alt);
-          getModifiableNode(nodeNeighbour)->setParent(indice);
+        if ((*getNode(nodeNeighbour)).getAccess() > alt) {
+          (*getModifiableNode(nodeNeighbour)).setAccess(alt);
+          (*getModifiableNode(nodeNeighbour)).setParent(indice);
           for (unsigned int i(1); i < TA.size();
                ++i) {  // Algorithme de tri par insértion
-            unsigned memory(getNode(TA[i])->getAccess());
+            unsigned memory((*getNode(TA[i])).getAccess());
             unsigned j(i);
-            while ((j > 0) && (getNode(TA[j - 1])->getAccess() > memory)) {
+            while ((j > 0) && ((*getNode(TA[j - 1])).getAccess() > memory)) {
               TA[j] = TA[j - 1];
               j -= 1;
             }

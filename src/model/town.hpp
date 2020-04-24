@@ -69,10 +69,19 @@ class Town : public tools::Renderable {
   /** Removes a link from the town. Does not check if the link exists */
   void removeLink(const node::Link& link);
 
+  /** Calculate the town ENJ index */
   double enj();
+  /** Calculate the town CI index */
   double ci();
+  /** Calculate the town MTA index */
   double mta();
-  unsigned pathFind(const node::NodeType& type);
+
+  /**
+   * Execute a path-finding algorithm to find the closest production node.
+   * Returns the UID of the closest found node. Each node in the path will
+   * have its parent attribute set to the uid of the previous node.
+   */
+  unsigned pathFind(const node::NodeType& type, unsigned d);
 
  private:
   /* Attributes */
