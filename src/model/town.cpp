@@ -24,7 +24,10 @@
 /* Select a few reused imports to help alleviate the syntax */
 using node::Link;
 using node::Node;
+using node::NodeType;
+using std::istream;
 using std::map;
+using std::ostream;
 using std::set;
 using std::string;
 using std::unique_ptr;
@@ -37,9 +40,8 @@ using town::Town;
 namespace {
 
 constexpr char COMMENT_DELIMITER('#');
-constexpr unsigned ERROR_EXIT_CODE(1);
-constexpr int NB_LINK_UIDS(2);
-constexpr double ZERO_TIME(0);
+constexpr int NB_LINK_UIDS(2);   // number of UIDs in a Link
+constexpr double ZERO_TIME(0.);  // an absence of time
 
 typedef vector<Node> Nodes;
 typedef vector<Link> Links;
@@ -52,25 +54,23 @@ struct DijkstraNode {
 };
 
 /** A graph of UIDs and nodes */
-typedef std::map<unsigned, DijkstraNode> DijkstraGraph;
+typedef map<unsigned, DijkstraNode> DijkstraGraph;
 
-Town parseTown(std::istream& stream, bool quitOnError = false);
-void parseNodes(std::istream& stream, Nodes& nodes, node::NodeType type);
-void parseLinks(std::istream& stream, Links& links);
+Town parseTown(istream& stream);
+void parseNodes(istream& stream, Nodes& nodes, NodeType type);
+void parseLinks(istream& stream, Links& links);
 
-std::stringstream getNextLine(std::istream& stream);
-unsigned readUnsigned(std::istream& stream);
-unsigned long long readLongUnsigned(std::istream& stream);
-double readDouble(std::istream& stream);
+std::stringstream getNextLine(istream& stream);
+unsigned readUnsigned(istream& stream);
+unsigned long long readLongUnsigned(istream& stream);
+double readDouble(istream& stream);
 
-DijkstraGraph createDijkstraGraph(const std::vector<unsigned>& uids,
-                                  unsigned originUid);
-double computeAccessTime(const node::NodeType& type0,
-                         const node::NodeType& type2, double distance);
+DijkstraGraph createDijkstraGraph(const vector<unsigned>& uids, unsigned originUid);
+double computeAccessTime(const NodeType& type0, const NodeType& type2,
+                         double distance);
 town::PathFindingResult generatePathResult(DijkstraGraph graph,
-                                           unsigned destinationUid,
-                                           double distance);
-unsigned closestUnvisited(DijkstraGraph graph);
+                                           unsigned destinationUid, double distance);
+bool nextGraphNode(DijkstraGraph graph, unsigned& nextUid);
 }  // namespace
 
 namespace town {
@@ -234,8 +234,7 @@ double Town::ci() {
     }
 
     // Speed
-    if (node0->getType() == node::TRANSPORT &&
-        node1->getType() == node::TRANSPORT) {
+    if (node0->getType() == node::TRANSPORT && node1->getType() == node::TRANSPORT) {
       cost *= FAST_SPEED;
     } else {
       cost *= DEFAULT_SPEED;
@@ -264,8 +263,8 @@ double Town::mta() {
 }
 
 town::PathFindingResult Town::pathFind(unsigned originUid,
-                                       const node::NodeType& searchType) const {
-  if (getNode(originUid) == nullptr) throw std::string("Node does not exist");
+                                       const NodeType& searchType) const {
+  if (getNode(originUid) == nullptr) throw string("Node does not exist");
 
   // Prepare algorithm variables
   DijkstraGraph graph(createDijkstraGraph(getNodes(), originUid));
@@ -274,17 +273,17 @@ town::PathFindingResult Town::pathFind(unsigned originUid,
   const Node* currentNode(nullptr);
   const Node* neighbourNode(nullptr);
 
-  auto currentGraphNode(graph.find(originUid));  // TN(n)
-  DijkstraGraph::iterator graphNeighbour;        // TN(lv)
+  DijkstraGraph::iterator currentGraphNode;  // TN(n)
+  DijkstraGraph::iterator graphNeighbour;    // TN(lv)
 
   double currentDistance(0);    // "TN(n).access"
   double neighbourDistance(0);  // "alt" variable
 
-  node::NodeType currentType;
-  node::NodeType neighbourType;
+  NodeType currentType;
+  NodeType neighbourType;
 
   // Execute the algorithm
-  while (true) {
+  while (nextGraphNode(graph, currentUid)) {
     currentNode = &nodes.find(currentUid)->second;
     currentGraphNode = graph.find(currentUid);
     currentDistance = currentGraphNode->second.distance;
@@ -311,19 +310,15 @@ town::PathFindingResult Town::pathFind(unsigned originUid,
       }
 
       // Mark production nodes as visited to deny through-access to other nodes
-      if (neighbourType == node::PRODUCTION)
-        graphNeighbour->second.visited = true;
+      if (neighbourType == node::PRODUCTION) graphNeighbour->second.visited = true;
 
       // Return condition: verify the destination condition has been met
       if (neighbourType == searchType)
         return generatePathResult(graph, neighbourUid, neighbourDistance);
     }
 
-    // Break condition: no more non-visited nodes
+    // Mark the node as visited to progress the algorithm
     currentGraphNode->second.visited = true;
-    currentUid =
-        closestUnvisited(graph);  // prioritse nodes with lowest access time
-    if (currentUid == NO_LINK) break;
   }
 
   return generatePathResult(graph, NO_LINK, INFINITE_TIME);
@@ -332,8 +327,7 @@ town::PathFindingResult Town::pathFind(unsigned originUid,
 /* == Private members == */
 
 /** Checks whether the given node intersects any town links */
-void Town::checkLinkSuperposition(const Node& testNode,
-                                  const double safetyDistance) {
+void Town::checkLinkSuperposition(const Node& testNode, const double safetyDistance) {
   unsigned uid(testNode.getUid()), link0, link1;
   double radius;
   for (const auto& townLink : links) {
@@ -353,8 +347,7 @@ void Town::checkLinkSuperposition(const Node& testNode,
 }
 
 /** Checks whether the given link would intersect any town nodes */
-void Town::checkLinkSuperposition(const Link& testLink,
-                                  const double safetyDistance) {
+void Town::checkLinkSuperposition(const Link& testLink, const double safetyDistance) {
   double radius;
   unsigned link0(testLink.getUid0()), link1(testLink.getUid1());
 
@@ -369,24 +362,22 @@ void Town::checkLinkSuperposition(const Link& testLink,
     if (uid == link0 || uid == link1) continue;
     radius = townNode.second.radius();
 
-    if (minPointSegmentDistance(townNode.second.getPosition(), link0Pos,
-                                link1Pos) <= (radius + safetyDistance)) {
+    if (minPointSegmentDistance(townNode.second.getPosition(), link0Pos, link1Pos) <=
+        (radius + safetyDistance)) {
       throw error::node_link_superposition(uid);
     }
   }
 }
 
 /** Checks whether the given node would intersect any town nodes */
-void Town::checkNodeSuperposition(const Node& testNode,
-                                  const double safetyDistance) {
+void Town::checkNodeSuperposition(const Node& testNode, const double safetyDistance) {
   double distance;
   for (const auto& townNodePair : nodes) {
     const Node* townNode(&townNodePair.second);
 
     distance = (testNode.getPosition() - townNode->getPosition()).norm();
     if (distance <= testNode.radius() + townNode->radius() + safetyDistance) {
-      throw error::node_node_superposition(testNode.getUid(),
-                                           townNode->getUid());
+      throw error::node_node_superposition(testNode.getUid(), townNode->getUid());
     }
   }
 }
@@ -394,10 +385,10 @@ void Town::checkNodeSuperposition(const Node& testNode,
 /* === FUNCTIONS === */
 
 /** Load a town from a file, or create a new one if file does not exist */
-Town loadFromFile(const std::string& path) {
+Town loadFromFile(const string& path) {
   std::ifstream file(path);
   if (file.is_open()) {
-    return Town(parseTown(file, false));  // TODO remove quitting
+    return Town(parseTown(file));
   } else {
     std::cerr << "Error: Could not open file" << std::endl;
     return Town();
@@ -419,36 +410,22 @@ namespace {
  * If quitOnError is true, the program will output the results to the terminal,
  * and additionally exit immediately if a parsing error is encountered.
  */
-Town parseTown(std::istream& stream, bool quitOnError) {
+Town parseTown(istream& stream) {
   Nodes nodes;
   Links links;
 
-  try {
-    // Parse each node
-    parseNodes(stream, nodes, node::HOUSING);
-    parseNodes(stream, nodes, node::TRANSPORT);
-    parseNodes(stream, nodes, node::PRODUCTION);
+  // Parse each node
+  parseNodes(stream, nodes, node::HOUSING);
+  parseNodes(stream, nodes, node::TRANSPORT);
+  parseNodes(stream, nodes, node::PRODUCTION);
 
-    // Parse each link
-    parseLinks(stream, links);
+  // Parse each link
+  parseLinks(stream, links);
 
-    // Construct the town and return
-    Town town(nodes, links);
+  // Construct the town and return
+  Town town(nodes, links);
 
-    if (quitOnError) std::cout << error::success();
-
-    return town;
-
-  } catch (string& error) {
-    if (quitOnError == true) {
-      std::cout << error;
-      exit(ERROR_EXIT_CODE);
-    } else {
-      throw error;
-    }
-  }
-
-  return Town();
+  return town;
 }
 
 /**
@@ -456,7 +433,7 @@ Town parseTown(std::istream& stream, bool quitOnError) {
  * instances and append them to the given vector. This function initially reads
  * the node count.
  */
-void parseNodes(std::istream& rawStream, Nodes& nodes, node::NodeType type) {
+void parseNodes(istream& rawStream, Nodes& nodes, NodeType type) {
   std::stringstream lineStream(getNextLine(rawStream));
 
   size_t count(readLongUnsigned(lineStream));
@@ -480,7 +457,7 @@ void parseNodes(std::istream& rawStream, Nodes& nodes, node::NodeType type) {
  * Read and parse links from an input stream, creating Link objects and
  * appending them to a vector.
  */
-void parseLinks(std::istream& rawStream, Links& links) {
+void parseLinks(istream& rawStream, Links& links) {
   std::stringstream lineStream(getNextLine(rawStream));
 
   size_t count(readLongUnsigned(lineStream));
@@ -500,7 +477,7 @@ void parseLinks(std::istream& rawStream, Links& links) {
  * Read a single line of real content (containing readable characters) from an
  * input stream. Each line is stripped of comments before being returned.
  */
-std::stringstream getNextLine(std::istream& stream) {
+std::stringstream getNextLine(istream& stream) {
   // Signal the end by return a stringstream with an EOF bit
   if (stream.eof()) {
     std::stringstream emptyStream("");
@@ -536,21 +513,21 @@ std::stringstream getNextLine(std::istream& stream) {
 }
 
 /** Read and return an int from an input stream */
-unsigned readUnsigned(std::istream& stream) {
+unsigned readUnsigned(istream& stream) {
   unsigned buffer(0);
   stream >> buffer;
   return buffer;
 }
 
 /** Read and return an int from an input stream */
-unsigned long long readLongUnsigned(std::istream& stream) {
+unsigned long long readLongUnsigned(istream& stream) {
   unsigned long long buffer(0);
   stream >> buffer;
   return buffer;
 }
 
 /** Read and return a double from an input stream */
-double readDouble(std::istream& stream) {
+double readDouble(istream& stream) {
   double buffer(0.);
   stream >> buffer;
   return buffer;
@@ -558,10 +535,12 @@ double readDouble(std::istream& stream) {
 
 /* == Dijkstra == */
 
-/** Creates a graph that is suitable for path finding calculations using the
- * Dijkstra algorithm */
-DijkstraGraph createDijkstraGraph(const std::vector<unsigned>& uids,
-                                  unsigned originUid) {
+/**
+ * Creates a graph that is suitable for path finding calculations using the
+ * Dijkstra algorithm. All nodes will univisited and set to INFINITE_TIME, apart
+ * from the origin node which will have a distance of 0.
+ */
+DijkstraGraph createDijkstraGraph(const vector<unsigned>& uids, unsigned originUid) {
   DijkstraGraph graph;
   for (const auto& uid : uids) {
     if (uid == originUid) {
@@ -575,8 +554,8 @@ DijkstraGraph createDijkstraGraph(const std::vector<unsigned>& uids,
 }
 
 /** Computes the access time between two nodes */
-double computeAccessTime(const node::NodeType& type0,
-                         const node::NodeType& type1, double distance) {
+double computeAccessTime(const NodeType& type0, const NodeType& type1,
+                         double distance) {
   if (type0 == node::TRANSPORT && type1 == node::TRANSPORT)
     return distance / FAST_SPEED;
   return distance / DEFAULT_SPEED;
@@ -585,8 +564,7 @@ double computeAccessTime(const node::NodeType& type0,
 /** Generates a result of a path finding operation, returning whether a
  * destination was found, a list of UIDs in the path and the total distance */
 town::PathFindingResult generatePathResult(DijkstraGraph graph,
-                                           unsigned destinationUid,
-                                           double distance) {
+                                           unsigned destinationUid, double distance) {
   bool success(destinationUid != NO_LINK);
   town::Path path;
 
@@ -605,8 +583,8 @@ town::PathFindingResult generatePathResult(DijkstraGraph graph,
   return {success, std::move(path), distance};
 }
 
-/** Returns the closest node in a Dijkstra graph */
-unsigned closestUnvisited(DijkstraGraph graph) {
+/** Fins the next node, and sets nextUid. Returns a bool whether a node was found */
+bool nextGraphNode(DijkstraGraph graph, unsigned& nextUid) {
   unsigned closestUid(NO_LINK);
   double closestDistance(INFINITE_TIME);
 
@@ -617,7 +595,8 @@ unsigned closestUnvisited(DijkstraGraph graph) {
     }
   }
 
-  return closestUid;
+  nextUid = closestUid;
+  return closestUid != NO_LINK;
 }
 
 }  // namespace

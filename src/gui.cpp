@@ -31,12 +31,10 @@ namespace {
 constexpr int SPACING(4);
 constexpr double INITIAL_ZOOM(1.0);
 
-/** DELTA_ZOOM is not perfectly representable as a binary floating point number
- */
+/** DELTA_ZOOM is not perfectly representable as a binary floating point number */
 constexpr double ZOOM_ERROR(1E-10);
 
-/** Actions that can be triggered by the interface and dispatched to the store
- */
+/** Actions that can be triggered by the interface and dispatched to the store */
 enum Action {
   EXIT,
   NEW,
@@ -340,8 +338,7 @@ void Controller::handleAction(const Action& action) {
 }
 
 void Controller::openTown() {
-  Gtk::FileChooserDialog dialog(*window, "Open a town",
-                                Gtk::FILE_CHOOSER_ACTION_OPEN);
+  Gtk::FileChooserDialog dialog(*window, "Open a town", Gtk::FILE_CHOOSER_ACTION_OPEN);
   dialog.add_button("_Cancel", Gtk::RESPONSE_CANCEL);
   dialog.add_button("Select", Gtk::RESPONSE_OK);
   const auto result = dialog.run();
@@ -368,13 +365,12 @@ void Controller::loadTown(const std::string& path) {
 
 /* == Button == */
 
-Button::Button(const std::string& text, SharedStore& store,
-               const Action& action)
+Button::Button(const std::string& text, SharedStore& store, const Action& action)
     : Gtk::Button(text),
       action(action),
       store(store),
-      connection(signal_clicked().connect(
-          sigc::mem_fun(*this, &Button::handleClick))) {
+      connection(
+          signal_clicked().connect(sigc::mem_fun(*this, &Button::handleClick))) {
   set_margin_bottom(SPACING);
 }
 Button::~Button() { connection.disconnect(); }
@@ -440,7 +436,7 @@ MtaLabel::MtaLabel(SharedStore& store) : Subscription(store) {}
 
 void MtaLabel::onUpdate(SharedStore& store) {
   std::stringstream formatter;
-  formatter.setf(std::ios::fixed);
+  formatter.setf(std::ios::scientific);
   formatter.precision(2);
   formatter << store->getTown()->mta();
   set_label("MTA: " + formatter.str());
