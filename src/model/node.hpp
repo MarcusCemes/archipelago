@@ -50,17 +50,6 @@ class Node : public tools::Renderable {
   /** Calculate the Node's radius, based on its current capacity */
   double radius() const;
 
-  /* Path-finding algorithm related properties */
-
-  bool getIn() const;
-  void setIn(bool in);
-
-  double getAccess() const;
-  void setAccess(double access);
-
-  double getParent() const;
-  void setParent(unsigned parent);
-
  private:
   NodeType type;
   unsigned uid;
@@ -69,10 +58,6 @@ class Node : public tools::Renderable {
 
   /** Validate and set the uid. This should be immutable during the lifetime */
   void setUid(unsigned uid);
-
-  bool in;
-  double access;
-  unsigned parent;
 };
 
 /**

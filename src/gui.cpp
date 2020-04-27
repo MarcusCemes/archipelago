@@ -71,14 +71,8 @@ class Store {
   std::shared_ptr<town::Town> getTown();
 
   double getZoomFactor() const;
-  double getEnj() const;
-  double getCi() const;
-  double getMta() const;
 
   void setZoomFactor(double newValue);
-  void setEnj(double newValue);
-  void setCi(double newValue);
-  void setMta(double newValue);
 
  private:
   UpdateSignal updateSignal;
@@ -87,9 +81,6 @@ class Store {
   std::shared_ptr<town::Town> town;
 
   double zoomFactor;
-  double enj;
-  double ci;
-  double mta;
 };
 
 /** Shorthand to a C++11 shared pointer of a store instance */
@@ -231,7 +222,7 @@ class Sidebar : public Gtk::Box {
 };
 
 /** Extended graphics::TownView that subscribes to the data store */
-class Viewport : public graphics::TownView, public Subscription {
+class Viewport : public Subscription, public graphics::TownView {
  public:
   Viewport() = delete;
   Viewport(SharedStore& store);
@@ -277,20 +268,13 @@ namespace {
 
 /* == Store == */
 
-Store::Store()
-    : town(new town::Town()), zoomFactor(INITIAL_ZOOM), enj(0), ci(0), mta(0) {}
+Store::Store() : town(new town::Town()), zoomFactor(INITIAL_ZOOM) {}
 
 ActionSignal Store::getActionSignal() { return actionSignal; }
 UpdateSignal Store::getUpdateSignal() { return updateSignal; }
 
 std::shared_ptr<town::Town> Store::getTown() { return town; }
-double Store::getEnj() const { return enj; }
-double Store::getCi() const { return ci; }
-double Store::getMta() const { return mta; }
 double Store::getZoomFactor() const { return zoomFactor; }
-void Store::setEnj(double newValue) { enj = newValue; }
-void Store::setCi(double newValue) { ci = newValue; }
-void Store::setMta(double newValue) { mta = newValue; }
 void Store::setZoomFactor(double newValue) { zoomFactor = newValue; }
 
 /* == Subscription == */
@@ -306,10 +290,10 @@ void Subscription::triggerUpdate() { onUpdate(store); }
 /* == Controller == */
 
 Controller::Controller(Gtk::Window& window)
-    : store(new Store()),
+    : window(&window),
+      store(new Store()),
       connection(store->getActionSignal().connect(
-          sigc::mem_fun(*this, &Controller::handleAction))),
-      window(&window) {}
+          sigc::mem_fun(*this, &Controller::handleAction))) {}
 Controller::~Controller() { connection.disconnect(); }
 
 SharedStore& Controller::getStore() { return store; }
@@ -356,8 +340,7 @@ void Controller::handleAction(const Action& action) {
 }
 
 void Controller::openTown() {
-  Gtk::FileChooserDialog dialog(*window, "Open a town",
-                                Gtk::FILE_CHOOSER_ACTION_OPEN);
+  Gtk::FileChooserDialog dialog(*window, "Open a town", Gtk::FILE_CHOOSER_ACTION_OPEN);
   dialog.add_button("_Cancel", Gtk::RESPONSE_CANCEL);
   dialog.add_button("Select", Gtk::RESPONSE_OK);
   const auto result = dialog.run();
@@ -384,13 +367,12 @@ void Controller::loadTown(const std::string& path) {
 
 /* == Button == */
 
-Button::Button(const std::string& text, SharedStore& store,
-               const Action& action)
+Button::Button(const std::string& text, SharedStore& store, const Action& action)
     : Gtk::Button(text),
       action(action),
       store(store),
-      connection(signal_clicked().connect(
-          sigc::mem_fun(*this, &Button::handleClick))) {
+      connection(
+          signal_clicked().connect(sigc::mem_fun(*this, &Button::handleClick))) {
   set_margin_bottom(SPACING);
 }
 Button::~Button() { connection.disconnect(); }
@@ -432,7 +414,7 @@ void EnjLabel::onUpdate(SharedStore& store) {
   std::stringstream formatter;
   formatter.setf(std::ios::fixed);
   formatter.precision(4);
-  formatter << store->getEnj();
+  formatter << store->getTown()->enj();
   set_label("ENJ: " + formatter.str());
   set_margin_bottom(SPACING);
 }
@@ -445,7 +427,7 @@ void CiLabel::onUpdate(SharedStore& store) {
   std::stringstream formatter;
   formatter.setf(std::ios::scientific);
   formatter.precision(5);
-  formatter << store->getZoomFactor();
+  formatter << store->getTown()->ci();
   set_label("CI: " + formatter.str());
   set_margin_bottom(SPACING);
 }
@@ -458,7 +440,7 @@ void MtaLabel::onUpdate(SharedStore& store) {
   std::stringstream formatter;
   formatter.setf(std::ios::fixed);
   formatter.precision(0);
-  formatter << store->getZoomFactor();
+  formatter << store->getTown()->mta();
   set_label("MTA: " + formatter.str());
   set_margin_bottom(SPACING);
 }
@@ -509,9 +491,7 @@ Sidebar::Sidebar(SharedStore& store)
 Viewport::Viewport(SharedStore& store)
     : Subscription(store), TownView(store->getTown(), INITIAL_ZOOM) {}
 
-void Viewport::onUpdate(SharedStore& store) {
-  setZoom(store->getZoomFactor());
-};
+void Viewport::onUpdate(SharedStore& store) { setZoom(store->getZoomFactor()); }
 
 /* == Window == */
 

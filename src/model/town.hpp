@@ -6,13 +6,25 @@
 #define MODEL_TOWN_H
 
 #include <map>
-#include <set>
+#include <memory>
 #include <vector>
 
 #include "node.hpp"
 #include "tools.hpp"
 
 namespace town {
+
+/* === DEFINITIONS === */
+
+typedef std::unique_ptr<std::vector<unsigned>> Path;
+
+/** Represents a result from a path finding operation. If a path is not found, path is
+ * a null pointer. */
+struct PathFindingResult {
+  bool success;
+  Path path;
+  double distance;
+};
 
 /* === CLASSES === */
 
@@ -77,11 +89,14 @@ class Town : public tools::Renderable {
   double mta();
 
   /**
-   * Execute a path-finding algorithm to find the closest production node.
-   * Returns the UID of the closest found node. Each node in the path will
-   * have its parent attribute set to the uid of the previous node.
+   * Execute a pathfinding algorithm from an origin node to the closest node of a
+   * certain type. Returns a result containing whether a valid path was found and an
+   * accompanying list of node UIDs in the path if yes.
+   *
+   * The current implementation of the pathfinding algorithm is an optimised Dijkstra
+   * algorithm. Production nodes can not traversed to gain access to other nodes.
    */
-  unsigned pathFind(const node::NodeType& type, unsigned d);
+  PathFindingResult pathFind(unsigned origin, const node::NodeType& destination) const;
 
  private:
   /* Attributes */

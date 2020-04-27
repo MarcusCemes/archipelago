@@ -3,14 +3,16 @@
 
 #include "town.hpp"
 
-#include <array>     // inline for loop
-#include <cctype>    // isspace()
-#include <fstream>   // istream
-#include <iostream>  // cerr
-#include <limits>    // numeric_limits
-#include <map>       // validation
-#include <set>       // validation
-#include <sstream>   // stringstream
+#include <algorithm>  // reverse()
+#include <array>      // inline for loop
+#include <cctype>     // isspace()
+#include <fstream>    // istream
+#include <iostream>   // cerr
+#include <limits>     // numeric_limits
+#include <map>        // validation
+#include <memory>     // unique_ptr
+#include <set>        // validation
+#include <sstream>    // stringstream
 #include <string>
 #include <vector>
 
@@ -25,6 +27,7 @@ using node::Node;
 using std::map;
 using std::set;
 using std::string;
+using std::unique_ptr;
 using std::vector;
 using tools::Vec2;
 using town::Town;
@@ -36,9 +39,20 @@ namespace {
 constexpr char COMMENT_DELIMITER('#');
 constexpr unsigned ERROR_EXIT_CODE(1);
 constexpr int NB_LINK_UIDS(2);
+constexpr double ZERO_TIME(0);
 
 typedef vector<Node> Nodes;
 typedef vector<Link> Links;
+
+/** Represents a node in the Dijkstra algorithm graph */
+struct DijkstraNode {
+  bool visited;
+  double distance;
+  unsigned parent;
+};
+
+/** A graph of UIDs and nodes */
+typedef std::map<unsigned, DijkstraNode> DijkstraGraph;
 
 Town parseTown(std::istream& stream, bool quitOnError = false);
 void parseNodes(std::istream& stream, Nodes& nodes, node::NodeType type);
@@ -49,6 +63,13 @@ unsigned readUnsigned(std::istream& stream);
 unsigned long long readLongUnsigned(std::istream& stream);
 double readDouble(std::istream& stream);
 
+DijkstraGraph createDijkstraGraph(const std::vector<unsigned>& uids,
+                                  unsigned originUid);
+double computeAccessTime(const node::NodeType& type0, const node::NodeType& type2,
+                         double distance);
+town::PathFindingResult generatePathResult(DijkstraGraph graph,
+                                           unsigned destinationUid, double distance);
+unsigned closestUnvisited(DijkstraGraph graph);
 }  // namespace
 
 namespace town {
@@ -171,150 +192,136 @@ void Town::removeLink(const Link& link) {
 }
 
 double Town::enj() {
-  double nbp_L(0.0), nbp_T(0.0), nbp_P(0.0);
-  if (nodes.size() > 0) {
-    for (const auto& townNode : nodes) {
-      if (townNode.second.getType() == node::HOUSING)
-        nbp_L += townNode.second.getCapacity();
-      if (townNode.second.getType() == node::TRANSPORT)
-        nbp_T += townNode.second.getCapacity();
-      if (townNode.second.getType() == node::PRODUCTION)
-        nbp_P += townNode.second.getCapacity();
-      return (nbp_L - (nbp_P + nbp_T)) / (nbp_L + nbp_T + nbp_P);
+  double enjSum(0.);
+  unsigned nb(0);
+
+  for (const auto& node : nodes) {
+    ++nb;
+    switch (node.second.getType()) {
+      case node::HOUSING:
+        ++enjSum;
+        break;
+      case node::TRANSPORT:
+        --enjSum;
+        break;
+      case node::PRODUCTION:
+        --enjSum;
+        break;
     }
-    if (nodes.size() == 0) return 0.0;
   }
+
+  if (nb == 0) return 0.;
+  return enjSum / nb;
 }
 
 double Town::ci() {
-  double CI(0.0);
-  for (const auto& townLink : links) {
-    double dist(0.0), capacite(0.0), vitesse(0.0);
-    dist = (getNode(townLink.getUid0())->getPosition() -
-            getNode(townLink.getUid1())->getPosition())
-               .norm();
-    capacite = std::min(getNode(townLink.getUid0())->getCapacity(),
-                        getNode(townLink.getUid1())->getCapacity());
-    if (getNode(townLink.getUid0())->getType() == node::TRANSPORT &&
-        getNode(townLink.getUid1())->getType() == node::TRANSPORT)
-      vitesse = FAST_SPEED;
-    else
-      vitesse = DEFAULT_SPEED;
-    CI += dist * capacite * vitesse;
+  double ci(0.);
+
+  for (const auto& link : links) {
+    auto node0(getNode(link.getUid0()));
+    auto node1(getNode(link.getUid1()));
+
+    // Distance
+    double cost((node1->getPosition() - node0->getPosition()).norm());
+
+    // Capacity
+    if (node0->getCapacity() <= node1->getCapacity()) {
+      cost *= node0->getCapacity();
+    } else {
+      cost *= node1->getCapacity();
+    }
+
+    // Speed
+    if (node0->getType() == node::TRANSPORT && node1->getType() == node::TRANSPORT) {
+      cost *= FAST_SPEED;
+    } else {
+      cost *= DEFAULT_SPEED;
+    }
+
+    ci += cost;
   }
-  return CI;
+
+  return ci;
 }
 
 double Town::mta() {
-  double mta(0.0);
-  for (const auto& townNode : nodes) {
-    double mtaTransport(0.0);
-    pathFind(node::TRANSPORT, townNode.first);  // modifié
-    if (pathFind(node::TRANSPORT, townNode.first) !=
-        NO_LINK) {  // Calcul de mtaTransport // modifié
-      for (const auto& townNode : nodes) {
-        if (((*getNode(townNode.second.getParent())).getType() == node::TRANSPORT) &&
-            (townNode.second.getType() == node::TRANSPORT)) {
-          mtaTransport += (((*getNode(townNode.second.getParent())).getPosition() -
-                            (townNode.second.getPosition()))
-                               .norm()) /
-                          FAST_SPEED;
-        } else {
-          mtaTransport = (((*getNode(townNode.second.getParent())).getPosition() -
-                           (townNode.second.getPosition()))
-                              .norm()) /
-                         DEFAULT_SPEED;
-        }
-      }
-    } else
-      mtaTransport = INFINITE_TIME;
-    double mtaProduction(0.0);
-    pathFind(node::PRODUCTION, townNode.first);  // modifié
-    if (pathFind(node::PRODUCTION, townNode.first) !=
-        NO_LINK) {  // Calcul de mtaProduction // modifié
-      for (const auto& townNode : nodes) {
-        if (((*getNode(townNode.second.getParent())).getType() ==
-             node::PRODUCTION) &&  // Calcul temps_acces
-            (townNode.second.getType() == node::PRODUCTION)) {
-          mtaTransport += (((*getNode(townNode.second.getParent())).getPosition() -
-                            (townNode.second.getPosition()))
-                               .norm()) /
-                          FAST_SPEED;
-        } else {
-          mtaTransport = (((*getNode(townNode.second.getParent())).getPosition() -
-                           (townNode.second.getPosition()))
-                              .norm()) /
-                         DEFAULT_SPEED;
-        }
-      }
-    } else
-      mtaProduction = INFINITE_TIME;
-    mta += mtaTransport + mtaProduction;  // modifié
+  double sum(0);
+  double nbNodes(0);
+
+  for (const auto& node : nodes) {
+    if (node.second.getType() == node::HOUSING) {
+      sum += pathFind(node.first, node::TRANSPORT).distance;
+      sum += pathFind(node.first, node::PRODUCTION).distance;
+      ++nbNodes;
+    }
   }
-  return mta;  // modifié
+
+  if (nbNodes == 0) return 0.;
+  return sum / nbNodes;
 }
 
-unsigned Town::pathFind(const node::NodeType& type, unsigned d) {
-  for (auto& townNode : nodes) {
-    townNode.second.setIn(true);
-    townNode.second.setAccess(INFINITE_TIME);
-    townNode.second.setParent(NO_LINK);
-  }
-  (*getModifiableNode(d)).setAccess(0);  // modifié
-  vector<unsigned> TA(getNodes().size());
-  TA[0] = d;
-  for (unsigned i(0); i < TA.size(); ++i)
-    if (getNodes()[i] != d)
-      TA.push_back(getNodes()[i]);
-    else {
-      i += 1;
-      TA.push_back(getNodes()[i]);
-    }
-  while (nodes.size() != 0) {
-    unsigned indice(TA[0]);
-    for (unsigned i(1); i < TA.size(); ++i) {
-      if ((*getNode(TA[i])).getAccess() < (*getNode(indice)).getAccess())
-        indice = TA[i];  // modifié
-    }
-    (*getModifiableNode(indice)).setIn(true);
-    if ((*getNode(indice)).getType() == type) return indice;
-    (*getModifiableNode(indice)).setIn(false);
-    for (const auto& nodeNeighbour : getLinkedNodes(indice)) {
-      double temps_acces(0.0);
-      if ((*getNode(nodeNeighbour)).getIn() == true) {
-        if (((*getNode(nodeNeighbour)).getType() ==
-             node::TRANSPORT) &&  // Calcul temps_acces
-            (*getNode(indice)).getType() == node::TRANSPORT) {
-          temps_acces = (((*getNode(nodeNeighbour)).getPosition() -
-                          (*getNode(indice)).getPosition())
-                             .norm()) /
-                        FAST_SPEED;
-        } else {
-          temps_acces = (((*getNode(nodeNeighbour)).getPosition() -
-                          (*getNode(indice)).getPosition())
-                             .norm()) /
-                        DEFAULT_SPEED;
-        }
-        double alt((*getNode(indice)).getAccess() +
-                   temps_acces);  // + compute_access(TN,n,lv)
-        if ((*getNode(nodeNeighbour)).getAccess() > alt) {
-          (*getModifiableNode(nodeNeighbour)).setAccess(alt);
-          (*getModifiableNode(nodeNeighbour)).setParent(indice);
-          for (unsigned int i(1); i < TA.size();
-               ++i) {  // Algorithme de tri par insértion
-            unsigned memory((*getNode(TA[i])).getAccess());
-            unsigned j(i);
-            while ((j > 0) && ((*getNode(TA[j - 1])).getAccess() > memory)) {
-              TA[j] = TA[j - 1];
-              j -= 1;
-            }
-            TA[j] = memory;
-          }  // Fin du tri par insértion
-        }
+town::PathFindingResult Town::pathFind(unsigned originUid,
+                                       const node::NodeType& searchType) const {
+  if (getNode(originUid) == nullptr) throw std::string("Node does not exist");
+
+  // Prepare algorithm variables
+  DijkstraGraph graph(createDijkstraGraph(getNodes(), originUid));
+
+  unsigned currentUid(originUid);
+  const Node* currentNode(nullptr);
+  const Node* neighbourNode(nullptr);
+
+  auto currentGraphNode(graph.find(originUid));  // TN(n)
+  DijkstraGraph::iterator graphNeighbour;        // TN(lv)
+
+  double currentDistance(0);    // "TN(n).access"
+  double neighbourDistance(0);  // "alt" variable
+
+  node::NodeType currentType;
+  node::NodeType neighbourType;
+
+  // Execute the algorithm
+  while (true) {
+    currentNode = &nodes.find(currentUid)->second;
+    currentGraphNode = graph.find(currentUid);
+    currentDistance = currentGraphNode->second.distance;
+    currentType = currentNode->getType();
+
+    // Evaluate all graph neighbours
+    for (const auto& neighbourUid : getLinkedNodes(currentGraphNode->first)) {
+      graphNeighbour = graph.find(neighbourUid);
+      if (graphNeighbour->second.visited) continue;
+
+      neighbourNode = getNode(neighbourUid);
+      neighbourNode = getNode(neighbourUid);
+      neighbourType = neighbourNode->getType();
+      neighbourDistance =
+          (neighbourNode->getPosition() - currentNode->getPosition()).norm();
+
+      neighbourDistance =
+          currentDistance +
+          computeAccessTime(currentType, neighbourType, neighbourDistance);
+
+      if (neighbourDistance < graphNeighbour->second.distance) {
+        graphNeighbour->second.distance = neighbourDistance;
+        graphNeighbour->second.parent = currentUid;
       }
+
+      // Mark production nodes as visited to deny through-access to other nodes
+      if (neighbourType == node::PRODUCTION) graphNeighbour->second.visited = true;
+
+      // Return condition: verify the destination condition has been met
+      if (neighbourType == searchType)
+        return generatePathResult(graph, neighbourUid, neighbourDistance);
     }
+
+    // Break condition: no more non-visited nodes
+    currentGraphNode->second.visited = true;
+    currentUid = closestUnvisited(graph);  // prioritse nodes with lowest access time
+    if (currentUid == NO_LINK) break;
   }
-  return NO_LINK;
+
+  return generatePathResult(graph, NO_LINK, INFINITE_TIME);
 }
 
 /* == Private members == */
@@ -537,6 +544,69 @@ double readDouble(std::istream& stream) {
   double buffer(0.);
   stream >> buffer;
   return buffer;
+}
+
+/* == Dijkstra == */
+
+/** Creates a graph that is suitable for path finding calculations using the Dijkstra
+ * algorithm */
+DijkstraGraph createDijkstraGraph(const std::vector<unsigned>& uids,
+                                  unsigned originUid) {
+  DijkstraGraph graph;
+  for (const auto& uid : uids) {
+    if (uid == originUid) {
+      graph.insert({uid, {false, ZERO_TIME, NO_LINK}});
+    } else {
+      graph.insert({uid, {false, INFINITE_TIME, NO_LINK}});
+    }
+  }
+
+  return graph;
+}
+
+/** Computes the access time between two nodes */
+double computeAccessTime(const node::NodeType& type0, const node::NodeType& type1,
+                         double distance) {
+  if (type0 == node::TRANSPORT && type1 == node::TRANSPORT)
+    return distance / FAST_SPEED;
+  return distance / DEFAULT_SPEED;
+}
+
+/** Generates a result of a path finding operation, returning whether a destination was
+ * found, a list of UIDs in the path and the total distance */
+town::PathFindingResult generatePathResult(DijkstraGraph graph,
+                                           unsigned destinationUid, double distance) {
+  bool success(destinationUid != NO_LINK);
+  town::Path path;
+
+  if (success) {
+    path.reset(new vector<unsigned>());
+    path->push_back(destinationUid);
+    auto graphNode(graph.find(destinationUid));
+
+    while (graphNode->second.parent != NO_LINK) {
+      graphNode = graph.find(graphNode->second.parent);
+      path->push_back(graphNode->first);
+    }
+    std::reverse(path->begin(), path->end());
+  }
+
+  return {success, std::move(path), distance};
+}
+
+/** Returns the closest node in a Dijkstra graph */
+unsigned closestUnvisited(DijkstraGraph graph) {
+  unsigned closestUid(NO_LINK);
+  double closestDistance(INFINITE_TIME);
+
+  for (const auto& node : graph) {
+    if (!node.second.visited && node.second.distance < closestDistance) {
+      closestUid = node.first;
+      closestDistance = node.second.distance;
+    }
+  }
+
+  return closestUid;
 }
 
 }  // namespace
