@@ -9,7 +9,7 @@
 #include "model/tools.hpp"
 #include "model/town.hpp"
 
-namespace graphics {
+namespace {
 
 constexpr double CENTRE(.5);
 
@@ -22,6 +22,14 @@ constexpr double WHITE[3]{1., 1., 1.};
 constexpr double GREEN[3]{0., 1., 0.};
 constexpr double BLACK[3]{0., 0., 0.};
 
+constexpr double STROKE_WIDTH(6.);
+
+double calculateScale(double width, double height, double zoom);
+
+}  // namespace
+
+namespace graphics {
+
 /*== Renderer == */
 
 TownView::TownView(const std::shared_ptr<town::Town>& town, double initialZoom)
@@ -29,11 +37,16 @@ TownView::TownView(const std::shared_ptr<town::Town>& town, double initialZoom)
 
 bool TownView::on_draw(const Cairo::RefPtr<Cairo::Context>& cr) {
   Gtk::Allocation allocation = get_allocation();
-  const int width = allocation.get_width();
-  const int height = allocation.get_height();
+  const double width(allocation.get_width());
+  const double height(allocation.get_height());
+  const double scale(calculateScale(width, height, zoomFactor));
 
-  cr->scale(zoomFactor, zoomFactor);
   cr->translate(width / TWO, height / TWO);
+  cr->scale(scale, scale);
+
+  cr->arc(0, 0, 8, 0, D_PI);
+  cr->set_source_rgb(0, 0, 0);
+  cr->fill();
 
   context.setContext(cr);
   cr->save();
@@ -67,6 +80,7 @@ void CairoContext::draw(const tools::Circle& obj) {
   cr->set_source_rgb(WHITE[0], WHITE[1], WHITE[2]);
   cr->fill_preserve();
   setSourceFromColour();
+  cr->set_line_width(STROKE_WIDTH);
   cr->stroke();
   cr->restore();
 }
@@ -75,6 +89,7 @@ void CairoContext::draw(const tools::Line& obj) {
   cr->save();
   cr->move_to(obj.getPointA().getX(), obj.getPointA().getY());
   cr->line_to(obj.getPointB().getX(), obj.getPointB().getY());
+  cr->set_line_width(STROKE_WIDTH);
   cr->stroke();
   cr->restore();
 }
@@ -95,3 +110,12 @@ void CairoContext::setSourceFromColour() {
 }
 
 }  // namespace graphics
+
+namespace {
+
+double calculateScale(double width, double height, double zoom) {
+  double smallestSide(width <= height ? width : height);
+  return zoom * smallestSide / (TWO * DIM_MAX);
+}
+
+}  // namespace

@@ -65,10 +65,11 @@ double readDouble(std::istream& stream);
 
 DijkstraGraph createDijkstraGraph(const std::vector<unsigned>& uids,
                                   unsigned originUid);
-double computeAccessTime(const node::NodeType& type0, const node::NodeType& type2,
-                         double distance);
+double computeAccessTime(const node::NodeType& type0,
+                         const node::NodeType& type2, double distance);
 town::PathFindingResult generatePathResult(DijkstraGraph graph,
-                                           unsigned destinationUid, double distance);
+                                           unsigned destinationUid,
+                                           double distance);
 unsigned closestUnvisited(DijkstraGraph graph);
 }  // namespace
 
@@ -193,25 +194,26 @@ void Town::removeLink(const Link& link) {
 
 double Town::enj() {
   double enjSum(0.);
-  unsigned nb(0);
+  unsigned population(0);
 
   for (const auto& node : nodes) {
-    ++nb;
+    unsigned capacity(node.second.getCapacity());
+    population += capacity;
     switch (node.second.getType()) {
       case node::HOUSING:
-        ++enjSum;
+        enjSum += capacity;
         break;
       case node::TRANSPORT:
-        --enjSum;
+        enjSum -= capacity;
         break;
       case node::PRODUCTION:
-        --enjSum;
+        enjSum -= capacity;
         break;
     }
   }
 
-  if (nb == 0) return 0.;
-  return enjSum / nb;
+  if (population == 0) return 0.;
+  return enjSum / population;
 }
 
 double Town::ci() {
@@ -232,7 +234,8 @@ double Town::ci() {
     }
 
     // Speed
-    if (node0->getType() == node::TRANSPORT && node1->getType() == node::TRANSPORT) {
+    if (node0->getType() == node::TRANSPORT &&
+        node1->getType() == node::TRANSPORT) {
       cost *= FAST_SPEED;
     } else {
       cost *= DEFAULT_SPEED;
@@ -308,7 +311,8 @@ town::PathFindingResult Town::pathFind(unsigned originUid,
       }
 
       // Mark production nodes as visited to deny through-access to other nodes
-      if (neighbourType == node::PRODUCTION) graphNeighbour->second.visited = true;
+      if (neighbourType == node::PRODUCTION)
+        graphNeighbour->second.visited = true;
 
       // Return condition: verify the destination condition has been met
       if (neighbourType == searchType)
@@ -317,7 +321,8 @@ town::PathFindingResult Town::pathFind(unsigned originUid,
 
     // Break condition: no more non-visited nodes
     currentGraphNode->second.visited = true;
-    currentUid = closestUnvisited(graph);  // prioritse nodes with lowest access time
+    currentUid =
+        closestUnvisited(graph);  // prioritse nodes with lowest access time
     if (currentUid == NO_LINK) break;
   }
 
@@ -327,7 +332,8 @@ town::PathFindingResult Town::pathFind(unsigned originUid,
 /* == Private members == */
 
 /** Checks whether the given node intersects any town links */
-void Town::checkLinkSuperposition(const Node& testNode, const double safetyDistance) {
+void Town::checkLinkSuperposition(const Node& testNode,
+                                  const double safetyDistance) {
   unsigned uid(testNode.getUid()), link0, link1;
   double radius;
   for (const auto& townLink : links) {
@@ -347,7 +353,8 @@ void Town::checkLinkSuperposition(const Node& testNode, const double safetyDista
 }
 
 /** Checks whether the given link would intersect any town nodes */
-void Town::checkLinkSuperposition(const Link& testLink, const double safetyDistance) {
+void Town::checkLinkSuperposition(const Link& testLink,
+                                  const double safetyDistance) {
   double radius;
   unsigned link0(testLink.getUid0()), link1(testLink.getUid1());
 
@@ -362,22 +369,24 @@ void Town::checkLinkSuperposition(const Link& testLink, const double safetyDista
     if (uid == link0 || uid == link1) continue;
     radius = townNode.second.radius();
 
-    if (minPointSegmentDistance(townNode.second.getPosition(), link0Pos, link1Pos) <=
-        (radius + safetyDistance)) {
+    if (minPointSegmentDistance(townNode.second.getPosition(), link0Pos,
+                                link1Pos) <= (radius + safetyDistance)) {
       throw error::node_link_superposition(uid);
     }
   }
 }
 
 /** Checks whether the given node would intersect any town nodes */
-void Town::checkNodeSuperposition(const Node& testNode, const double safetyDistance) {
+void Town::checkNodeSuperposition(const Node& testNode,
+                                  const double safetyDistance) {
   double distance;
   for (const auto& townNodePair : nodes) {
     const Node* townNode(&townNodePair.second);
 
     distance = (testNode.getPosition() - townNode->getPosition()).norm();
     if (distance <= testNode.radius() + townNode->radius() + safetyDistance) {
-      throw error::node_node_superposition(testNode.getUid(), townNode->getUid());
+      throw error::node_node_superposition(testNode.getUid(),
+                                           townNode->getUid());
     }
   }
 }
@@ -407,8 +416,8 @@ namespace {
  * Reads an entire input stream and generates a town using the archipelago file
  * format.
  *
- * If quitOnError is true, the program will output the results to the terminal, and
- * additionally exit immediately if a parsing error is encountered.
+ * If quitOnError is true, the program will output the results to the terminal,
+ * and additionally exit immediately if a parsing error is encountered.
  */
 Town parseTown(std::istream& stream, bool quitOnError) {
   Nodes nodes;
@@ -443,8 +452,9 @@ Town parseTown(std::istream& stream, bool quitOnError) {
 }
 
 /**
- * Read and parse a single node type from an input stream, create the Node instances
- * and append them to the given vector. This function initially reads the node count.
+ * Read and parse a single node type from an input stream, create the Node
+ * instances and append them to the given vector. This function initially reads
+ * the node count.
  */
 void parseNodes(std::istream& rawStream, Nodes& nodes, node::NodeType type) {
   std::stringstream lineStream(getNextLine(rawStream));
@@ -467,8 +477,8 @@ void parseNodes(std::istream& rawStream, Nodes& nodes, node::NodeType type) {
 }
 
 /**
- * Read and parse links from an input stream, creating Link objects and appending
- * them to a vector.
+ * Read and parse links from an input stream, creating Link objects and
+ * appending them to a vector.
  */
 void parseLinks(std::istream& rawStream, Links& links) {
   std::stringstream lineStream(getNextLine(rawStream));
@@ -548,8 +558,8 @@ double readDouble(std::istream& stream) {
 
 /* == Dijkstra == */
 
-/** Creates a graph that is suitable for path finding calculations using the Dijkstra
- * algorithm */
+/** Creates a graph that is suitable for path finding calculations using the
+ * Dijkstra algorithm */
 DijkstraGraph createDijkstraGraph(const std::vector<unsigned>& uids,
                                   unsigned originUid) {
   DijkstraGraph graph;
@@ -565,17 +575,18 @@ DijkstraGraph createDijkstraGraph(const std::vector<unsigned>& uids,
 }
 
 /** Computes the access time between two nodes */
-double computeAccessTime(const node::NodeType& type0, const node::NodeType& type1,
-                         double distance) {
+double computeAccessTime(const node::NodeType& type0,
+                         const node::NodeType& type1, double distance) {
   if (type0 == node::TRANSPORT && type1 == node::TRANSPORT)
     return distance / FAST_SPEED;
   return distance / DEFAULT_SPEED;
 }
 
-/** Generates a result of a path finding operation, returning whether a destination was
- * found, a list of UIDs in the path and the total distance */
+/** Generates a result of a path finding operation, returning whether a
+ * destination was found, a list of UIDs in the path and the total distance */
 town::PathFindingResult generatePathResult(DijkstraGraph graph,
-                                           unsigned destinationUid, double distance) {
+                                           unsigned destinationUid,
+                                           double distance) {
   bool success(destinationUid != NO_LINK);
   town::Path path;
 
