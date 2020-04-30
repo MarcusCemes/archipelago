@@ -44,16 +44,12 @@ bool TownView::on_draw(const Cairo::RefPtr<Cairo::Context>& cr) {
   cr->translate(width / TWO, height / TWO);
   cr->scale(scale, scale);
 
-  cr->arc(0, 0, 8, 0, D_PI);
-  cr->set_source_rgb(0, 0, 0);
-  cr->fill();
-
-  context.setContext(cr);
   cr->save();
   cr->set_source_rgb(WHITE[0], WHITE[1], WHITE[2]);
   cr->paint();
   cr->restore();
 
+  context.setContext(cr);
   if (town) town->render(context);
 
   return true;
@@ -94,9 +90,7 @@ void CairoContext::draw(const tools::Line& obj) {
   cr->restore();
 }
 
-void CairoContext::setColour(const tools::Colour& newColour) {
-  colour = newColour;
-}
+void CairoContext::setColour(const tools::Colour& newColour) { colour = newColour; }
 
 void CairoContext::setSourceFromColour() {
   switch (colour) {

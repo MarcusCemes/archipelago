@@ -72,6 +72,9 @@ class Town : public tools::Renderable {
   /** Whether the town contains a certain link between nodes (uid order-independent) */
   bool hasLink(const node::Link& link) const;
 
+  /** Returns an immutably referenced array of links in the town */
+  const std::vector<node::Link>* getLinks() const;
+
   /**
    * Get a list of nodes that are linked to the given node
    * @throws If the node is not a part of the town
@@ -125,6 +128,9 @@ class Town : public tools::Renderable {
 
 /** Read the given file and parse the town */
 Town loadFromFile(const std::string& path);
+
+/** Save the given town to a file */
+void saveToFile(const std::string& path, const Town& town);
 
 }  // namespace town
 
