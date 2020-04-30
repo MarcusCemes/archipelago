@@ -6,13 +6,25 @@
 #define MODEL_TOWN_H
 
 #include <map>
-#include <set>
+#include <memory>
 #include <vector>
 
 #include "node.hpp"
 #include "tools.hpp"
 
 namespace town {
+
+/* === DEFINITIONS === */
+
+typedef std::unique_ptr<std::vector<unsigned>> Path;
+
+/** Represents a result from a path finding operation. If a path is not found, path is
+ * a null pointer. */
+struct PathFindingResult {
+  bool success;
+  Path path;
+  double distance;
+};
 
 /* === CLASSES === */
 
@@ -42,6 +54,9 @@ class Town : public tools::Renderable {
   /** Returns a constant pointer to the node instance, or nullptr */
   const node::Node* getNode(const unsigned uid) const;
 
+  /** Returns a non-constant pointer to the node instance, or nullptr */
+  node::Node* getModifiableNode(const unsigned uid);
+
   /** Returns a list of node uids that are a part of the town */
   std::vector<unsigned> getNodes() const;
 
@@ -65,6 +80,23 @@ class Town : public tools::Renderable {
 
   /** Removes a link from the town. Does not check if the link exists */
   void removeLink(const node::Link& link);
+
+  /** Calculate the town ENJ index */
+  double enj();
+  /** Calculate the town CI index */
+  double ci();
+  /** Calculate the town MTA index */
+  double mta();
+
+  /**
+   * Execute a pathfinding algorithm from an origin node to the closest node of a
+   * certain type. Returns a result containing whether a valid path was found and an
+   * accompanying list of node UIDs in the path if yes.
+   *
+   * The current implementation of the pathfinding algorithm is an optimised Dijkstra
+   * algorithm. Production nodes can not traversed to gain access to other nodes.
+   */
+  PathFindingResult pathFind(unsigned origin, const node::NodeType& destination) const;
 
  private:
   /* Attributes */
