@@ -65,6 +65,11 @@ unsigned readUnsigned(istream& stream);
 unsigned long long readLongUnsigned(istream& stream);
 double readDouble(istream& stream);
 
+void writeTown(ostream& stream, const Town& town);
+
+void printNodeType(ostream& stream, const Town& town, const NodeType& type);
+void printLinks(ostream& stream, const Town& town);
+
 DijkstraGraph createDijkstraGraph(const vector<unsigned>& uids, unsigned originUid);
 double computeAccessTime(const NodeType& type0, const NodeType& type2,
                          double distance);
@@ -167,6 +172,8 @@ bool Town::hasLink(const Link& link) const {
   }
   return false;
 }
+
+const vector<Link>* Town::getLinks() const { return &links; }
 
 vector<unsigned> Town::getLinkedNodes(const unsigned uid) const {
   if (nodes.count(uid) == 0) throw error::link_vacuum;
@@ -384,7 +391,6 @@ void Town::checkNodeSuperposition(const Node& testNode, const double safetyDista
 
 /* === FUNCTIONS === */
 
-/** Load a town from a file, or create a new one if file does not exist */
 Town loadFromFile(const string& path) {
   std::ifstream file(path);
   if (file.is_open()) {
@@ -392,6 +398,16 @@ Town loadFromFile(const string& path) {
   } else {
     std::cerr << "Error: Could not open file" << std::endl;
     return Town();
+  }
+}
+
+void saveToFile(const std::string& path, const Town& town) {
+  std::ofstream file(path);
+  if (file.is_open()) {
+    writeTown(file, town);
+    file.close();
+  } else {
+    std::cerr << "Error: Could not open file" << std::endl;
   }
 }
 
@@ -531,6 +547,53 @@ double readDouble(istream& stream) {
   double buffer(0.);
   stream >> buffer;
   return buffer;
+}
+
+/* == Saving == */
+
+/** Serialises the town into a streamable format */
+void writeTown(ostream& stream, const Town& town) {
+  stream << COMMENT_DELIMITER << " Archipelago Town" << std::endl;
+  stream << COMMENT_DELIMITER << " AUTOMATICALLY GENERATED FILE" << std::endl;
+
+  printNodeType(stream, town, node::HOUSING);
+  printNodeType(stream, town, node::TRANSPORT);
+  printNodeType(stream, town, node::PRODUCTION);
+
+  printLinks(stream, town);
+}
+
+void printNodeType(ostream& stream, const Town& town, const NodeType& type) {
+  unsigned count(0);
+  vector<unsigned> uids;
+  const Node* node;
+  Vec2 position;
+
+  stream << std::endl;
+  for (const auto& uid : town.getNodes()) {
+    if (town.getNode(uid)->getType() == type) {
+      ++count;
+      uids.push_back(uid);
+    }
+  }
+
+  stream << count << std::endl;
+
+  for (const auto& uid : uids) {
+    node = town.getNode(uid);
+    position = node->getPosition();
+    stream << uid << " " << position.getX() << " " << position.getY() << " "
+           << node->getCapacity() << std::endl;
+  }
+}
+
+void printLinks(ostream& stream, const Town& town) {
+  auto links(town.getLinks());
+
+  stream << links->size() << std::endl;
+  for (const auto& link : *links) {
+    stream << link.getUid0() << " " << link.getUid1() << std::endl;
+  }
 }
 
 /* == Dijkstra == */

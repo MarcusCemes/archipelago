@@ -31,6 +31,12 @@ namespace {
 constexpr int SPACING(4);
 constexpr double INITIAL_ZOOM(1.0);
 
+constexpr int ENJ_PRECISION(4);
+constexpr int CI_PRECISION(5);
+constexpr int MTA_PRECISION(2);
+constexpr int MTA_FIXED_PRECISION(0);
+constexpr double MTA_FIXED_LIMIT(1E4);
+
 /** DELTA_ZOOM is not perfectly representable as a binary floating point number */
 constexpr double ZOOM_ERROR(1E-10);
 
@@ -122,6 +128,7 @@ class Controller {
   sigc::connection connection;
 
   void openTown();
+  void saveTown();
 };
 
 /** Extended Gtk::Button that also dispatches actions to the store */
@@ -310,6 +317,10 @@ void Controller::handleAction(const Action& action) {
       openTown();
       break;
 
+    case Action::SAVE:
+      saveTown();
+      break;
+
     case Action::ZOOM_IN:
       if (store->getZoomFactor() + DELTA_ZOOM - ZOOM_ERROR <= MAX_ZOOM) {
         store->setZoomFactor(store->getZoomFactor() + DELTA_ZOOM);
@@ -353,6 +364,18 @@ void Controller::openTown() {
       dialog.set_secondary_text(err);
       dialog.run();
     }
+  }
+}
+
+void Controller::saveTown() {
+  Gtk::FileChooserDialog dialog(*window, "Save town", Gtk::FILE_CHOOSER_ACTION_SAVE);
+  dialog.add_button("_Cancel", Gtk::RESPONSE_CANCEL);
+  dialog.add_button("Save", Gtk::RESPONSE_OK);
+  const auto result = dialog.run();
+  dialog.close();  // explicit to avoid conflict with error dialog
+
+  if (result == Gtk::RESPONSE_OK) {
+    town::saveToFile(dialog.get_filename(), *store->getTown());
   }
 }
 
@@ -411,7 +434,7 @@ EnjLabel::EnjLabel(SharedStore& store) : Subscription(store) {}
 void EnjLabel::onUpdate(SharedStore& store) {
   std::stringstream formatter;
   formatter.setf(std::ios::fixed);
-  formatter.precision(4);
+  formatter.precision(ENJ_PRECISION);
   formatter << store->getTown()->enj();
   set_label("ENJ: " + formatter.str());
   set_margin_bottom(SPACING);
@@ -424,7 +447,7 @@ CiLabel::CiLabel(SharedStore& store) : Subscription(store) {}
 void CiLabel::onUpdate(SharedStore& store) {
   std::stringstream formatter;
   formatter.setf(std::ios::scientific);
-  formatter.precision(5);
+  formatter.precision(CI_PRECISION);
   formatter << store->getTown()->ci();
   set_label("CI: " + formatter.str());
   set_margin_bottom(SPACING);
@@ -436,9 +459,17 @@ MtaLabel::MtaLabel(SharedStore& store) : Subscription(store) {}
 
 void MtaLabel::onUpdate(SharedStore& store) {
   std::stringstream formatter;
-  formatter.setf(std::ios::scientific);
-  formatter.precision(2);
-  formatter << store->getTown()->mta();
+  auto mta(store->getTown()->mta());
+
+  if (mta <= MTA_FIXED_LIMIT) {
+    formatter.setf(std::ios::fixed);
+    formatter.precision(MTA_FIXED_PRECISION);
+  } else {
+    formatter.setf(std::ios::scientific);
+    formatter.precision(MTA_PRECISION);
+  }
+
+  formatter << mta;
   set_label("MTA: " + formatter.str());
   set_margin_bottom(SPACING);
 }
