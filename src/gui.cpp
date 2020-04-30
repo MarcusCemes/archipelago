@@ -18,7 +18,7 @@
 #include <sigc++/signal.h>            // data store
 
 #include <memory>   // shared_ptr
-#include <sstream>  // floating point formatting
+#include <sstream>  // ostringstream
 #include <string>
 
 #include "graphics.hpp"
@@ -419,7 +419,7 @@ void Group::add(Widget& widget) { buttonBox.add(widget); }
 ZoomLabel::ZoomLabel(SharedStore& store) : Subscription(store) {}
 
 void ZoomLabel::onUpdate(SharedStore& store) {
-  std::stringstream formatter;
+  std::ostringstream formatter;
   formatter.setf(std::ios::fixed);
   formatter.precision(1);
   formatter << store->getZoomFactor();
@@ -432,9 +432,7 @@ void ZoomLabel::onUpdate(SharedStore& store) {
 EnjLabel::EnjLabel(SharedStore& store) : Subscription(store) {}
 
 void EnjLabel::onUpdate(SharedStore& store) {
-  std::stringstream formatter;
-  formatter.setf(std::ios::fixed);
-  formatter.precision(ENJ_PRECISION);
+  std::ostringstream formatter;
   formatter << store->getTown()->enj();
   set_label("ENJ: " + formatter.str());
   set_margin_bottom(SPACING);
@@ -445,9 +443,7 @@ void EnjLabel::onUpdate(SharedStore& store) {
 CiLabel::CiLabel(SharedStore& store) : Subscription(store) {}
 
 void CiLabel::onUpdate(SharedStore& store) {
-  std::stringstream formatter;
-  formatter.setf(std::ios::scientific);
-  formatter.precision(CI_PRECISION);
+  std::ostringstream formatter;
   formatter << store->getTown()->ci();
   set_label("CI: " + formatter.str());
   set_margin_bottom(SPACING);
@@ -460,15 +456,6 @@ MtaLabel::MtaLabel(SharedStore& store) : Subscription(store) {}
 void MtaLabel::onUpdate(SharedStore& store) {
   std::stringstream formatter;
   auto mta(store->getTown()->mta());
-
-  if (mta <= MTA_FIXED_LIMIT) {
-    formatter.setf(std::ios::fixed);
-    formatter.precision(MTA_FIXED_PRECISION);
-  } else {
-    formatter.setf(std::ios::scientific);
-    formatter.precision(MTA_PRECISION);
-  }
-
   formatter << mta;
   set_label("MTA: " + formatter.str());
   set_margin_bottom(SPACING);
