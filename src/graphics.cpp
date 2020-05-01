@@ -90,6 +90,18 @@ void CairoContext::draw(const tools::Line& obj) {
   cr->restore();
 }
 
+void CairoContext::draw(const tools::Polygon4& obj) {
+  cr->save();
+  cr->move_to(obj.getA().getX(), obj.getA().getY());
+  cr->line_to(obj.getB().getX(), obj.getB().getY());
+  cr->line_to(obj.getC().getX(), obj.getC().getY());
+  cr->line_to(obj.getD().getX(), obj.getD().getY());
+  cr->close_path();
+  cr->set_line_width(STROKE_WIDTH);
+  cr->stroke();
+  cr->restore();
+}
+
 void CairoContext::setColour(const tools::Colour& newColour) { colour = newColour; }
 
 void CairoContext::setSourceFromColour() {
