@@ -89,6 +89,13 @@ Line::Line(const Vec2& pointA, const Vec2& pointB) : pointA(pointA), pointB(poin
 const Vec2& Line::getPointA() const { return pointA; }
 const Vec2& Line::getPointB() const { return pointB; }
 
+Polygon4::Polygon4(const Vec2& a, const Vec2& b, const Vec2& c, const Vec2& d)
+    : a(a), b(b), c(c), d(d) {}
+const Vec2& Polygon4::getA() const { return a; }
+const Vec2& Polygon4::getB() const { return b; }
+const Vec2& Polygon4::getC() const { return c; }
+const Vec2& Polygon4::getD() const { return d; }
+
 /* === FUNCTIONS === */
 
 double minPointLineDistance(const Vec2& point, const Vec2& lineA, const Vec2& lineB) {

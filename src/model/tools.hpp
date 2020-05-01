@@ -84,11 +84,29 @@ class Line {
   Vec2 pointB;
 };
 
+/** An immutable four-sided polygon primitive */
+class Polygon4 {
+ public:
+  Polygon4() = delete;
+  Polygon4(const Vec2& a, const Vec2& b, const Vec2& c, const Vec2& d);
+  const Vec2& getA() const;
+  const Vec2& getB() const;
+  const Vec2& getC() const;
+  const Vec2& getD() const;
+
+ private:
+  Vec2 a;
+  Vec2 b;
+  Vec2 c;
+  Vec2 d;
+};
+
 /** An abstract class that can be implemented by a renderer */
 class RenderContext {
  public:
   virtual void draw(const Circle& circle) = 0;
   virtual void draw(const Line& line) = 0;
+  virtual void draw(const Polygon4& line) = 0;
   virtual void setColour(const Colour& colour) = 0;
 };
 

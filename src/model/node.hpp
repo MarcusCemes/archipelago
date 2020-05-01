@@ -72,8 +72,6 @@ class Link {
   Link() = delete;
   Link(unsigned uid0, unsigned uid1);
 
-  // void render(tools::RenderContext& context) const override; // TODO remove
-
   /* Accessors/Manipulators */
 
   unsigned getUid0() const;
