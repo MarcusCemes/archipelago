@@ -29,6 +29,7 @@ class CairoContext : public tools::RenderContext {
   /* Inherited methods */
   void draw(const tools::Circle& obj) override;
   void draw(const tools::Line& obj) override;
+  void draw(const tools::Polygon4& obj) override;
   void setColour(const tools::Colour& colour) override;
 
  private:
