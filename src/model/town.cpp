@@ -42,6 +42,7 @@ namespace {
 constexpr char COMMENT_DELIMITER('#');
 constexpr int NB_LINK_UIDS(2);   // number of UIDs in a Link
 constexpr double ZERO_TIME(0.);  // an absence of time
+constexpr int LINE_START(0);     // beginning of a line
 
 typedef vector<Node> Nodes;
 typedef vector<Link> Links;
@@ -200,7 +201,7 @@ void Town::removeLink(const Link& link) {
 }
 
 double Town::enj() {
-  double enjSum(0.);
+  double enjSum(0);
   unsigned population(0);
 
   for (const auto& node : nodes) {
@@ -219,12 +220,12 @@ double Town::enj() {
     }
   }
 
-  if (population == 0) return 0.;
+  if (population == 0) return 0;  // special case
   return enjSum / population;
 }
 
 double Town::ci() {
-  double ci(0.);
+  double ci(0);
 
   for (const auto& link : links) {
     auto node0(getNode(link.getUid0()));
@@ -265,10 +266,14 @@ double Town::mta() {
     }
   }
 
-  if (nbNodes == 0) return 0.;
+  if (nbNodes == 0) return 0;  // special case
   return sum / nbNodes;
 }
 
+/**
+ * Our only function that exceeds 40 lines, favourable for optimisation and spacing
+ * An fast implementation of the Dijkstra algorithm.
+ */
 town::PathFindingResult Town::pathFind(unsigned originUid,
                                        const NodeType& searchType) const {
   if (getNode(originUid) == nullptr) throw string("Node does not exist");
@@ -507,7 +512,7 @@ std::stringstream getNextLine(istream& stream) {
   // Trim off comments
   size_t commentPos(line.find(COMMENT_DELIMITER));
   if (commentPos != string::npos) {
-    line = line.substr(0, commentPos);
+    line = line.substr(LINE_START, commentPos);
   }
 
   // search for non-whitespace character

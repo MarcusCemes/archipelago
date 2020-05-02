@@ -29,6 +29,9 @@ namespace {
 
 /* === CONSTANTS, DECLARATIONS & PROTOTYPES === */
 
+constexpr char APP_ID[]("ch.epfl.archipelago-301366_301070");
+constexpr char WINDOW_TITLE[]("Archipelago Town Editor");
+
 constexpr int SPACING(4);
 constexpr double INITIAL_ZOOM(1.0);
 
@@ -36,6 +39,7 @@ constexpr int ENJ_PRECISION(4);
 constexpr int CI_PRECISION(5);
 constexpr int MTA_PRECISION(2);
 constexpr int MTA_FIXED_PRECISION(0);
+constexpr int ZOOM_PRECISION(1);
 constexpr double MTA_FIXED_LIMIT(1E4);
 
 /** DELTA_ZOOM is not perfectly representable as a binary floating point number */
@@ -135,9 +139,12 @@ class Controller {
 
   void openTown();
   void saveTown();
+
+  void noAction();
+  void changeZoom(double newZoom, bool absolute = false);
 };
 
-/** Extended Gtk::Button that also dispatches actions to the store */
+/** Extended Gtk::Button that dispatches a saved action to the store */
 class Button : public Gtk::Button {
  public:
   Button() = delete;
@@ -145,7 +152,7 @@ class Button : public Gtk::Button {
   ~Button();
 
  private:
-  /** The saved action to dispatch */
+  /** The configured button action to dispatch */
   Action action;
   SharedStore store;
   sigc::connection connection;
@@ -265,7 +272,7 @@ namespace gui {
 
 /** Main application entry point that creates a GUI and runs the application */
 int init(const std::unique_ptr<std::string>& path) {
-  auto app(Gtk::Application::create("ch.epfl.archipelago-301366_301070"));
+  auto app(Gtk::Application::create(APP_ID));
   Window window;
 
   if (path) window.loadFile(*path);
@@ -319,6 +326,7 @@ void Controller::handleAction(const Action& action) {
     case Action::EXIT:
       window->close();  // let the program terminate gracefully
       break;
+
     case Action::NEW:
       *store->getTown() = town::Town();
       store->getUpdateSignal().emit();
@@ -333,29 +341,34 @@ void Controller::handleAction(const Action& action) {
       break;
 
     case Action::ZOOM_IN:
-      if (store->getZoomFactor() + DELTA_ZOOM - ZOOM_ERROR <= MAX_ZOOM) {
-        store->setZoomFactor(store->getZoomFactor() + DELTA_ZOOM);
-        store->getUpdateSignal().emit();
-      }
+      changeZoom(DELTA_ZOOM);
       break;
 
     case Action::ZOOM_OUT:
-      if (store->getZoomFactor() - DELTA_ZOOM + ZOOM_ERROR >= MIN_ZOOM) {
-        store->setZoomFactor(store->getZoomFactor() - DELTA_ZOOM);
-        store->getUpdateSignal().emit();
-      }
+      changeZoom(-DELTA_ZOOM);
       break;
 
     case Action::ZOOM_RESET:
-      store->setZoomFactor(INITIAL_ZOOM);
-      store->getUpdateSignal().emit();
+      changeZoom(INITIAL_ZOOM, true);
       break;
 
-    default: {
-      Gtk::MessageDialog dialog(*window, "You clicked a button!");
-      dialog.set_secondary_text("Unfortunately, it doesn't do anything yet");
-      dialog.run();
-    } break;
+    default:
+      noAction();
+  }
+}  // namespace
+
+void Controller::noAction() {
+  Gtk::MessageDialog dialog(*window, "You clicked a button!");
+  dialog.set_secondary_text("Unfortunately, it doesn't do anything yet");
+  dialog.run();
+}
+
+void Controller::changeZoom(double zoomFactor, bool absolute) {
+  double currentZoom(store->getZoomFactor());
+  double newZoom(absolute ? zoomFactor : currentZoom += zoomFactor);
+  if (newZoom + ZOOM_ERROR >= MIN_ZOOM && newZoom - ZOOM_ERROR <= MAX_ZOOM) {
+    store->setZoomFactor(newZoom);
+    store->getUpdateSignal().emit();
   }
 }
 
@@ -364,7 +377,7 @@ void Controller::openTown() {
   dialog.add_button("_Cancel", Gtk::RESPONSE_CANCEL);
   dialog.add_button("Select", Gtk::RESPONSE_OK);
   const auto result = dialog.run();
-  dialog.close();  // explicit to avoid conflict with error dialog
+  dialog.close();  // helps avoid conflict with a subsequent error dialog
 
   if (result == Gtk::RESPONSE_OK) loadTown(dialog.get_filename());
 }
@@ -374,7 +387,7 @@ void Controller::saveTown() {
   dialog.add_button("_Cancel", Gtk::RESPONSE_CANCEL);
   dialog.add_button("Save", Gtk::RESPONSE_OK);
   const auto result = dialog.run();
-  dialog.close();  // explicit to avoid conflict with error dialog
+  dialog.close();  // helps avoid conflict with a subsequent error dialog
 
   if (result == Gtk::RESPONSE_OK) {
     town::saveToFile(dialog.get_filename(), *store->getTown());
@@ -416,7 +429,6 @@ Group::Group(const std::string& label)
   set_margin_left(SPACING);
   set_margin_right(SPACING);
   Frame::add(buttonBox);
-  // buttonBox.set_homogeneous(true);
   buttonBox.set_margin_left(SPACING);
   buttonBox.set_margin_right(SPACING);
 }
@@ -430,7 +442,7 @@ ZoomLabel::ZoomLabel(SharedStore& store) : Subscription(store) {}
 void ZoomLabel::onUpdate(SharedStore& store) {
   std::ostringstream formatter;
   formatter.setf(std::ios::fixed);
-  formatter.precision(1);
+  formatter.precision(ZOOM_PRECISION);
   formatter << store->getZoomFactor();
   set_label("Zoom: x" + formatter.str());
   set_margin_bottom(SPACING);
@@ -557,7 +569,7 @@ Window::Window()
     : controller(*this),
       sidebar(controller.getStore()),
       viewport(controller.getStore()) {
-  set_title("Archipelago Town Editor");
+  set_title(WINDOW_TITLE);
 
   viewport.set_hexpand(true);
   viewport.set_vexpand(true);

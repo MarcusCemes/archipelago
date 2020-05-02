@@ -19,8 +19,9 @@ constexpr double D_PI(PI * 2);
 constexpr int TWO(2);
 
 constexpr double WHITE[3]{1., 1., 1.};
-constexpr double GREEN[3]{0., 1., 0.};
 constexpr double BLACK[3]{0., 0., 0.};
+constexpr double ORANGE[3]{1., 133. / 256., 27. / 256.};
+constexpr double GREEN[3]{0., 1., 0.};
 
 constexpr double STROKE_WIDTH(6.);
 
@@ -44,6 +45,7 @@ bool TownView::on_draw(const Cairo::RefPtr<Cairo::Context>& cr) {
   cr->translate(width / TWO, height / TWO);
   cr->scale(scale, scale);
 
+  // Erase and paint the background
   cr->save();
   cr->set_source_rgb(WHITE[0], WHITE[1], WHITE[2]);
   cr->paint();
@@ -108,6 +110,9 @@ void CairoContext::setSourceFromColour() {
   switch (colour) {
     case tools::Colour::BLACK:
       cr->set_source_rgb(BLACK[0], BLACK[1], BLACK[2]);
+      break;
+    case tools::Colour::ORANGE:
+      cr->set_source_rgb(ORANGE[0], ORANGE[1], ORANGE[2]);
       break;
     case tools::Colour::GREEN:
       cr->set_source_rgb(GREEN[0], GREEN[1], GREEN[2]);

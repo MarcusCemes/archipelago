@@ -41,7 +41,7 @@ class Node : public tools::Renderable {
 
   unsigned getCapacity() const;
   /**
-   * @throws IF the capacity is not valid
+   * @throws If the capacity is not valid
    */
   void setCapacity(unsigned capacity);
 

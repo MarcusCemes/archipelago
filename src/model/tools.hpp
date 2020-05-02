@@ -9,7 +9,7 @@
 namespace tools {
 
 /** Constants that represent rendering colours */
-enum Colour { BLACK, GREEN };
+enum Colour { BLACK, ORANGE, GREEN };
 
 /* === VECTOR === */
 

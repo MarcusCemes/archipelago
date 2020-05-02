@@ -12,6 +12,12 @@
 #include "node.hpp"
 #include "tools.hpp"
 
+namespace {
+
+constexpr double DEFAULT_SAFETY(0.);
+
+}
+
 namespace town {
 
 /* === DEFINITIONS === */
@@ -49,7 +55,7 @@ class Town : public tools::Renderable {
    * Add a Node to the town.
    * @throws If the node exists or causes a superposition with existing town members
    */
-  void addNode(const node::Node& node, const double safetyDistance = 0.);
+  void addNode(const node::Node& node, const double safetyDistance = DEFAULT_SAFETY);
 
   /** Returns a constant pointer to the node instance, or nullptr */
   const node::Node* getNode(const unsigned uid) const;
@@ -114,14 +120,14 @@ class Town : public tools::Renderable {
 
   /** Checks whether the given node intersects any town links */
   void checkNodeSuperposition(const node::Node& node,
-                              const double safetyDistance = 0.);
+                              const double safetyDistance = DEFAULT_SAFETY);
 
   /** Checks whether the given node intersects any town links */
   void checkLinkSuperposition(const node::Node& node,
-                              const double safetyDistance = 0.);
+                              const double safetyDistance = DEFAULT_SAFETY);
   /** Checks whether the given link intersects any town nodes */
   void checkLinkSuperposition(const node::Link& link,
-                              const double safetyDistance = 0.);
+                              const double safetyDistance = DEFAULT_SAFETY);
 };
 
 /* === FUNCTIONS === */
