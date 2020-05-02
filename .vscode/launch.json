@@ -8,7 +8,7 @@
       "name": "(gdb) Launch project",
       "type": "cppdbg",
       "request": "launch",
-      "program": "${workspaceFolder}/dist/projet",
+      "program": "${workspaceFolder}/dist/archipelago",
       "args": ["test/tests/s05.txt"],
       "stopAtEntry": false,
       "cwd": "${workspaceFolder}",

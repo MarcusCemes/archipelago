@@ -8,8 +8,8 @@
 #include "gui.hpp"
 #include "model/town.hpp"
 
-constexpr unsigned BASIC_ARGS(1);
-constexpr unsigned PATH_ARG(1);
+constexpr int BASIC_ARGS(1);
+constexpr int PATH_ARG(1);
 
 /** Parse CLI args and run the program */
 int main(int argc, char *argv[]) {

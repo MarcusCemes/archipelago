@@ -43,8 +43,10 @@ bool TownView::on_draw(const Cairo::RefPtr<Cairo::Context>& cr) {
   const double height(allocation.get_height());
   const double scale(calculateScale(width, height, zoomFactor));
 
+  // World to screen space coordinate transformation
+  // World objects are symmetrical, so flipping has no effect on visuals
   cr->translate(width / TWO, height / TWO);
-  cr->scale(scale, scale);
+  cr->scale(scale, -scale);
 
   // Erase and paint the background
   cr->save();
@@ -105,7 +107,9 @@ void CairoContext::draw(const tools::Polygon4& obj) {
   cr->restore();
 }
 
-void CairoContext::setColour(const tools::Colour& newColour) { colour = newColour; }
+void CairoContext::setColour(const tools::Colour& newColour) {
+  colour = newColour;
+}
 
 void CairoContext::setSourceFromColour() {
   switch (colour) {

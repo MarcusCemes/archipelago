@@ -37,9 +37,6 @@ constexpr int SPACING(4);
 constexpr double INITIAL_ZOOM(1.0);
 
 constexpr int ENJ_PRECISION(4);
-constexpr int CI_PRECISION(5);
-constexpr int MTA_PRECISION(2);
-constexpr int MTA_FIXED_PRECISION(0);
 constexpr int ZOOM_PRECISION(1);
 constexpr double MTA_FIXED_LIMIT(1E4);
 
@@ -455,6 +452,8 @@ EnjLabel::EnjLabel(SharedStore& store) : Subscription(store) {}
 
 void EnjLabel::onUpdate(SharedStore& store) {
   std::ostringstream formatter;
+  formatter.setf(std::ios::fixed);
+  formatter.precision(ENJ_PRECISION);
   formatter << store->getTown()->enj();
   set_label("ENJ: " + formatter.str());
   set_margin_bottom(SPACING);
