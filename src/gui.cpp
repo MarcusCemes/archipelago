@@ -12,6 +12,7 @@
 #include <gtkmm/grid.h>               // main content layout
 #include <gtkmm/label.h>              // zoom level
 #include <gtkmm/messagedialog.h>
+#include <gtkmm/radiobutton.h>  // node selectors
 #include <gtkmm/window.h>
 #include <sigc++/connection.h>        // data store
 #include <sigc++/functors/mem_fun.h>  // data store
@@ -53,6 +54,8 @@ enum Action {
   EDIT_LINK
 };
 
+enum SelectedNode { HOUSING, TRANSPORT, PRODUCTION };
+
 typedef sigc::signal<void> UpdateSignal;
 typedef sigc::signal<void, Action> ActionSignal;
 
@@ -75,8 +78,10 @@ class Store {
   std::shared_ptr<town::Town> getTown();
 
   double getZoomFactor() const;
+  SelectedNode getSelectedNode() const;
 
   void setZoomFactor(double newValue);
+  void setSelectedNode(const SelectedNode& node);
 
  private:
   UpdateSignal updateSignal;
@@ -84,6 +89,7 @@ class Store {
 
   std::shared_ptr<town::Town> town;
 
+  SelectedNode selectedNode;
   double zoomFactor;
 };
 
@@ -198,6 +204,17 @@ class MtaLabel : public Gtk::Label, public Subscription {
   void onUpdate(SharedStore& store) override;
 };
 
+class Selectors : public Gtk::Box {
+ public:
+  Selectors() = delete;
+  Selectors(SharedStore& store);
+
+ private:
+  SharedStore store;
+  Gtk::RadioButton housing, production, transport;
+  void handleChange();
+};
+
 /** Application sidebar that houses the controls */
 class Sidebar : public Gtk::Box {
  public:
@@ -205,25 +222,16 @@ class Sidebar : public Gtk::Box {
   Sidebar(SharedStore& store);
 
  private:
-  Group generalGroup;
-  Group displayGroup;
-  Group editorGroup;
-  Group infoGroup;
+  Group generalGroup, displayGroup, editorGroup, infoGroup;
+
+  Button exitButton, newButton, openButton, saveButton, shortestButton, zoomInButton,
+      zoomOutButton, zoomResetButton, editLinkButton;
+  Selectors selectors;
 
   ZoomLabel zoomLabel;
   EnjLabel enjLabel;
   CiLabel ciLabel;
   MtaLabel mtaLabel;
-
-  Button exitButton;
-  Button newButton;
-  Button openButton;
-  Button saveButton;
-  Button shortestButton;
-  Button zoomInButton;
-  Button zoomOutButton;
-  Button zoomResetButton;
-  Button editLinkButton;
 };
 
 /** Extended graphics::TownView that subscribes to the data store */
@@ -273,14 +281,17 @@ namespace {
 
 /* == Store == */
 
-Store::Store() : town(new town::Town()), zoomFactor(INITIAL_ZOOM) {}
+Store::Store()
+    : town(new town::Town()), selectedNode(HOUSING), zoomFactor(INITIAL_ZOOM) {}
 
 ActionSignal Store::getActionSignal() { return actionSignal; }
 UpdateSignal Store::getUpdateSignal() { return updateSignal; }
 
 std::shared_ptr<town::Town> Store::getTown() { return town; }
 double Store::getZoomFactor() const { return zoomFactor; }
+SelectedNode Store::getSelectedNode() const { return selectedNode; }
 void Store::setZoomFactor(double newValue) { zoomFactor = newValue; }
+void Store::setSelectedNode(const SelectedNode& newValue) { selectedNode = newValue; }
 
 /* == Subscription == */
 
@@ -355,16 +366,7 @@ void Controller::openTown() {
   const auto result = dialog.run();
   dialog.close();  // explicit to avoid conflict with error dialog
 
-  if (result == Gtk::RESPONSE_OK) {
-    try {
-      loadTown(dialog.get_filename());
-    } catch (std::string err) {
-      Gtk::MessageDialog dialog(*window, "Could not open file", false,
-                                Gtk::MESSAGE_ERROR);
-      dialog.set_secondary_text(err);
-      dialog.run();
-    }
-  }
+  if (result == Gtk::RESPONSE_OK) loadTown(dialog.get_filename());
 }
 
 void Controller::saveTown() {
@@ -380,8 +382,15 @@ void Controller::saveTown() {
 }
 
 void Controller::loadTown(const std::string& path) {
-  *store->getTown() = town::Town(town::loadFromFile(path));
-  store->getUpdateSignal().emit();
+  try {
+    *store->getTown() = town::loadFromFile(path);
+    store->getUpdateSignal().emit();
+  } catch (std::string err) {
+    Gtk::MessageDialog dialog(*window, "Could not open file", false,
+                              Gtk::MESSAGE_ERROR);
+    dialog.set_secondary_text(err);
+    dialog.run();
+  }
 }
 
 /* === LAYOUT === */
@@ -461,6 +470,37 @@ void MtaLabel::onUpdate(SharedStore& store) {
   set_margin_bottom(SPACING);
 }
 
+/* == Selectors == */
+
+Selectors::Selectors(SharedStore& store)
+    : Box(Gtk::ORIENTATION_VERTICAL),
+      store(store),
+      housing("Housing"),
+      production("Production"),
+      transport("Transport") {
+  production.join_group(housing);
+  transport.join_group(housing);
+  housing.set_active();
+
+  housing.signal_toggled().connect(sigc::mem_fun(*this, &Selectors::handleChange));
+  transport.signal_toggled().connect(sigc::mem_fun(*this, &Selectors::handleChange));
+  production.signal_toggled().connect(sigc::mem_fun(*this, &Selectors::handleChange));
+
+  pack_start(housing);
+  pack_start(production);
+  pack_start(transport);
+}
+
+void Selectors::handleChange() {
+  if (housing.get_active()) {
+    store->setSelectedNode(HOUSING);
+  } else if (transport.get_active()) {
+    store->setSelectedNode(TRANSPORT);
+  } else if (production.get_active()) {
+    store->setSelectedNode(PRODUCTION);
+  }
+}
+
 /* == Sidebar == */
 
 Sidebar::Sidebar(SharedStore& store)
@@ -469,10 +509,6 @@ Sidebar::Sidebar(SharedStore& store)
       displayGroup("Display"),
       editorGroup("Editor"),
       infoGroup("Information"),
-      zoomLabel(store),
-      enjLabel(store),
-      ciLabel(store),
-      mtaLabel(store),
       exitButton("Exit", store, Action::EXIT),
       newButton("New", store, Action::NEW),
       openButton("Open", store, Action::OPEN),
@@ -481,7 +517,12 @@ Sidebar::Sidebar(SharedStore& store)
       zoomInButton("Zoom in", store, Action::ZOOM_IN),
       zoomOutButton("Zoom out", store, Action::ZOOM_OUT),
       zoomResetButton("Zoom reset", store, Action::ZOOM_RESET),
-      editLinkButton("Edit link", store, Action::EDIT_LINK) {
+      editLinkButton("Edit link", store, Action::EDIT_LINK),
+      selectors(store),
+      zoomLabel(store),
+      enjLabel(store),
+      ciLabel(store),
+      mtaLabel(store) {
   generalGroup.add(exitButton);
   generalGroup.add(newButton);
   generalGroup.add(openButton);
@@ -492,6 +533,7 @@ Sidebar::Sidebar(SharedStore& store)
   displayGroup.add(zoomResetButton);
   displayGroup.add(zoomLabel);
   editorGroup.add(editLinkButton);
+  editorGroup.add(selectors);
   infoGroup.add(enjLabel);
   infoGroup.add(ciLabel);
   infoGroup.add(mtaLabel);
@@ -526,6 +568,8 @@ Window::Window()
 
   add(view);
   show_all();
+
+  controller.getStore()->getUpdateSignal().emit();
 }
 
 void Window::loadFile(const std::string& path) { controller.loadTown(path); }
