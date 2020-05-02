@@ -1,5 +1,6 @@
-// archipelago - gui.hpp
-// Graphical User Interface of the program
+// archipelago v2.0.0 - architecture b2
+// gui.hpp - user interaction
+// Authors: Marcus Cemes, Alexandre Dodens
 
 #ifndef GUI_H
 #define GUI_H

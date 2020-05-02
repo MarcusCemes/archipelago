@@ -1,5 +1,6 @@
-// archipelago - gui.cpp
-// Graphical User Interface of the program
+// archipelago v2.0.0 - architecture b2
+// gui.cpp - user interaction
+// Authors: Marcus Cemes, Alexandre Dodens
 
 #include "gui.hpp"
 

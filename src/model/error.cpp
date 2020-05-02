@@ -1,5 +1,6 @@
-// archipelago - model/error.hpp
-// Functions for standard execution errors
+// archipelago v2.0.0 - architecture b2
+// error.cpp - standard execution errors
+// Authors: Marcus Cemes, Alexandre Dodens
 
 #include "error.hpp"
 

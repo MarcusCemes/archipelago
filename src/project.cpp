@@ -1,5 +1,6 @@
-// archipelago - projet.cpp
-// Program entry point
+// archipelago v2.0.0 - architecture b2
+// project.cpp - program entry point
+// Authors: Marcus Cemes, Alexandre Dodens
 
 #include <memory>
 #include <string>

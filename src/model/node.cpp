@@ -1,5 +1,6 @@
-// archipelago - model/node.cpp
-// Classes and tools for node management
+// archipelago v2.0.0 - architecture b2
+// node.cpp - node classes and functions
+// Authors: Marcus Cemes, Alexandre Dodens
 
 #include "node.hpp"
 

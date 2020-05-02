@@ -1,5 +1,6 @@
-// archipelago - model/node.hpp
-// Classes and tools for node management
+// archipelago v2.0.0 - architecture b2
+// node.hpp - node classes and functions
+// Authors: Marcus Cemes, Alexandre Dodens
 
 #ifndef MODEL_NODE_H
 #define MODEL_NODE_H

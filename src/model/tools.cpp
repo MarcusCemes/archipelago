@@ -1,5 +1,6 @@
-// archipelago - model/tools.cpp
-// Tools for point, vector, segment and circle manipulation.
+// archipelago v2.0.0 - architecture b2
+// tools.cpp - math utilities, shared interfaces
+// Authors: Marcus Cemes, Alexandre Dodens
 
 #include "tools.hpp"
 

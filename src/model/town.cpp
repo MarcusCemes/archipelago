@@ -1,5 +1,6 @@
-// archipelago - model/town.cpp
-// Town-related logic, such as ENJ, CI and MTA calculations
+// archipelago v2.0.0 - architecture b2
+// town.cpp - town classes and functions
+// Authors: Marcus Cemes, Alexandre Dodens
 
 #include "town.hpp"
 

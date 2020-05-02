@@ -1,5 +1,6 @@
-// archipelago - graphics.cpp
-// Handles canvas-based rendering
+// archipelago v2.0.0 - architecture b2
+// graphics.cpp - canvas rendering
+// Authors: Marcus Cemes, Alexandre Dodens
 
 #include "graphics.hpp"
 
