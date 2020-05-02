@@ -590,7 +590,7 @@ void printNodeType(ostream& stream, const Town& town, const NodeType& type) {
 void printLinks(ostream& stream, const Town& town) {
   auto links(town.getLinks());
 
-  stream << links->size() << std::endl;
+  stream << std::endl << links->size() << std::endl;
   for (const auto& link : *links) {
     stream << link.getUid0() << " " << link.getUid1() << std::endl;
   }
