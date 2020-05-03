@@ -107,9 +107,7 @@ void CairoContext::draw(const tools::Polygon4& obj) {
   cr->restore();
 }
 
-void CairoContext::setColour(const tools::Colour& newColour) {
-  colour = newColour;
-}
+void CairoContext::setColour(const tools::Colour& newColour) { colour = newColour; }
 
 void CairoContext::setSourceFromColour() {
   switch (colour) {
