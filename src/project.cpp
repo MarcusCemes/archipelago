@@ -6,7 +6,6 @@
 #include <string>
 
 #include "gui.hpp"
-#include "model/town.hpp"
 
 constexpr int BASIC_ARGS(1);
 constexpr int PATH_ARG(1);
