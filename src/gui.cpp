@@ -401,6 +401,7 @@ void Controller::loadTown(const std::string& path) {
                               Gtk::MESSAGE_ERROR);
     dialog.set_secondary_text(err);
     dialog.run();
+    store->getActionSignal().emit(NEW);   // fresh new town
   }
 }
 
