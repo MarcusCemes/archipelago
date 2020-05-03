@@ -1,5 +1,6 @@
-// archipelago - model/tools.hpp
-// Tools for point, vector, segment and circle manipulation.
+// archipelago v2.0.0 - architecture b2
+// tools.hpp - math utilities, shared interfaces
+// Authors: Marcus Cemes, Alexandre Dodens
 
 #ifndef MODEL_TOOLS_H
 #define MODEL_TOOLS_H
@@ -9,7 +10,7 @@
 namespace tools {
 
 /** Constants that represent rendering colours */
-enum Colour { BLACK, GREEN };
+enum Colour { BLACK, ORANGE, GREEN };
 
 /* === VECTOR === */
 

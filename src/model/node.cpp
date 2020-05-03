@@ -1,9 +1,11 @@
-// archipelago - model/node.cpp
-// Classes and tools for node management
+// archipelago v2.0.0 - architecture b2
+// node.cpp - node classes and functions
+// Authors: Marcus Cemes, Alexandre Dodens
 
 #include "node.hpp"
 
 #include <cmath>
+#include <sstream>
 
 #include "constants.hpp"
 #include "error.hpp"
@@ -75,6 +77,13 @@ void Node::setCapacity(unsigned newCapacity) {
 }
 
 double Node::radius() const { return sqrt(capacity); }
+
+std::string Node::toString() const {
+  std::ostringstream stream;
+  stream << uid << " " << position.getX() << " " << position.getY() << " "
+         << getCapacity();
+  return stream.str();
+}
 
 /* == Link == */
 

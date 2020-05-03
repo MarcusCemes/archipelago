@@ -4,7 +4,7 @@
 # Supports subdirectories, automatic dependency generation and out-of-source builds.
 # obj/ and dist/ should be gitignored
 
-BUILD_TARGET  ?= projet
+BUILD_TARGET  ?= archipelago
 
 # Folder structure
 SRC_DIR       := src

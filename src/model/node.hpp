@@ -1,5 +1,6 @@
-// archipelago - model/node.hpp
-// Classes and tools for node management
+// archipelago v2.0.0 - architecture b2
+// node.hpp - node classes and functions
+// Authors: Marcus Cemes, Alexandre Dodens
 
 #ifndef MODEL_NODE_H
 #define MODEL_NODE_H
@@ -41,7 +42,7 @@ class Node : public tools::Renderable {
 
   unsigned getCapacity() const;
   /**
-   * @throws IF the capacity is not valid
+   * @throws If the capacity is not valid
    */
   void setCapacity(unsigned capacity);
 
@@ -49,6 +50,9 @@ class Node : public tools::Renderable {
 
   /** Calculate the Node's radius, based on its current capacity */
   double radius() const;
+
+  /** Serialise the node to a file-format format */
+  std::string toString() const;
 
  private:
   NodeType type;

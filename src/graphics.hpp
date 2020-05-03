@@ -1,5 +1,6 @@
-// archipelago - graphics.hpp
-// Handles canvas-based rendering
+// archipelago v2.0.0 - architecture b2
+// graphics.hpp - canvas rendering
+// Authors: Marcus Cemes, Alexandre Dodens
 
 #ifndef GRAPHICS_H
 #define GRAPHICS_H
