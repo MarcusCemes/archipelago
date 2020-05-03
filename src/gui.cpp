@@ -351,9 +351,11 @@ void Controller::handleAction(const Action& action) {
       break;
 
     default:
+      // Required by specifications for the second project hand in
+      std::cout << "Button with enum value " << action << " was clicked" << std::endl;
       noAction();
   }
-}  // namespace
+}
 
 void Controller::noAction() {
   Gtk::MessageDialog dialog(*window, "You clicked a button!");
