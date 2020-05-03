@@ -576,6 +576,8 @@ void printNodeType(ostream& stream, const Town& town, const NodeType& type) {
   Vec2 position;
 
   stream << std::endl;
+
+  // Find all nodes of a certain type
   for (const auto& uid : town.getNodes()) {
     if (town.getNode(uid)->getType() == type) {
       ++count;
@@ -586,10 +588,7 @@ void printNodeType(ostream& stream, const Town& town, const NodeType& type) {
   stream << count << std::endl;
 
   for (const auto& uid : uids) {
-    node = town.getNode(uid);
-    position = node->getPosition();
-    stream << uid << " " << position.getX() << " " << position.getY() << " "
-           << node->getCapacity() << std::endl;
+    stream << town.getNode(uid)->toString() << std::endl;
   }
 }
 

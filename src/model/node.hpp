@@ -51,6 +51,9 @@ class Node : public tools::Renderable {
   /** Calculate the Node's radius, based on its current capacity */
   double radius() const;
 
+  /** Serialise the node to a file-format format */
+  std::string toString() const;
+
  private:
   NodeType type;
   unsigned uid;

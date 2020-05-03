@@ -5,6 +5,7 @@
 #include "node.hpp"
 
 #include <cmath>
+#include <sstream>
 
 #include "constants.hpp"
 #include "error.hpp"
@@ -76,6 +77,13 @@ void Node::setCapacity(unsigned newCapacity) {
 }
 
 double Node::radius() const { return sqrt(capacity); }
+
+std::string Node::toString() const {
+  std::ostringstream stream;
+  stream << uid << " " << position.getX() << " " << position.getY() << " "
+         << getCapacity();
+  return stream.str();
+}
 
 /* == Link == */
 
