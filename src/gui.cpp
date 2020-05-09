@@ -43,6 +43,10 @@ constexpr double MTA_FIXED_LIMIT(1E4);
 /** DELTA_ZOOM is not perfectly representable as a binary floating point number */
 constexpr double ZOOM_ERROR(1E-10);
 
+/** GdkButtonEvent constants */
+constexpr unsigned LEFT_MOUSE(1U);
+constexpr unsigned RIGHT_MOUSE(3U);
+
 /** Actions that can be triggered by the interface and dispatched to the store */
 enum Action {
   EXIT,
@@ -60,6 +64,12 @@ enum SelectedNode { HOUSING, TRANSPORT, PRODUCTION };
 
 typedef sigc::signal<void> UpdateSignal;
 typedef sigc::signal<void, Action> ActionSignal;
+
+/** Represents a screen location in pixel coordinates */
+struct ScreenLocation {
+  unsigned x;
+  unsigned y;
+};
 
 /**
  * The application data store. Contains pointers to data structures as well as
@@ -246,6 +256,16 @@ class Viewport : public Subscription, public graphics::TownView {
   Viewport(SharedStore& store);
 
   void onUpdate(SharedStore& store) override;
+
+ private:
+  ScreenLocation leftClickOrigin;
+  ScreenLocation rightClickOrigin;
+
+  bool handlePress(const GdkEventButton* event);
+  bool handleRelease(const GdkEventButton* event);
+
+  void handleLeftClick(ScreenLocation origin, ScreenLocation target);
+  void handleRightClick(ScreenLocation origin, ScreenLocation target);
 };
 
 /** The main application window */
@@ -403,7 +423,7 @@ void Controller::loadTown(const std::string& path) {
                               Gtk::MESSAGE_ERROR);
     dialog.set_secondary_text(err);
     dialog.run();
-    store->getActionSignal().emit(NEW);   // fresh new town
+    store->getActionSignal().emit(NEW);  // fresh new town
   }
 }
 
@@ -562,9 +582,47 @@ Sidebar::Sidebar(SharedStore& store)
 /* == Viewport == */
 
 Viewport::Viewport(SharedStore& store)
-    : Subscription(store), TownView(store->getTown(), INITIAL_ZOOM) {}
+    : Subscription(store), TownView(store->getTown(), INITIAL_ZOOM) {
+  add_events(Gdk::BUTTON_PRESS_MASK | Gdk::BUTTON_RELEASE_MASK);
+  signal_button_press_event().connect(sigc::mem_fun(*this, &Viewport::handlePress));
+  signal_button_release_event().connect(
+      sigc::mem_fun(*this, &Viewport::handleRelease));
+}
 
 void Viewport::onUpdate(SharedStore& store) { setZoom(store->getZoomFactor()); }
+
+bool Viewport::handlePress(const GdkEventButton* event) {
+  switch (event->button) {
+    case LEFT_MOUSE:
+      leftClickOrigin = {(unsigned)event->x, (unsigned)event->y};
+      break;
+    case RIGHT_MOUSE:
+      rightClickOrigin = {(unsigned)event->x, (unsigned)event->y};
+      break;
+  }
+  return true;
+}
+
+bool Viewport::handleRelease(const GdkEventButton* event) {
+  switch (event->button) {
+    case LEFT_MOUSE:
+      handleLeftClick(leftClickOrigin, {(unsigned)event->x, (unsigned)event->y});
+      break;
+    case RIGHT_MOUSE:
+      handleRightClick(rightClickOrigin, {(unsigned)event->x, (unsigned)event->y});
+      break;
+  }
+  return true;
+}
+
+void Viewport::handleLeftClick(ScreenLocation origin, ScreenLocation target) {
+  std::cout << "Left click : (" << origin.x << ", " << origin.y << ") -> (" << target.x
+            << ", " << target.y << ")" << std::endl;
+}
+void Viewport::handleRightClick(ScreenLocation origin, ScreenLocation target) {
+  std::cout << "Right click: (" << origin.x << ", " << origin.y << ") -> (" << target.x
+            << ", " << target.y << ")" << std::endl;
+}
 
 /* == Window == */
 
