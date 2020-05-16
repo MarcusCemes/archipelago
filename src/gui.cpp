@@ -13,7 +13,8 @@
 #include <gtkmm/grid.h>               // main content layout
 #include <gtkmm/label.h>              // zoom level
 #include <gtkmm/messagedialog.h>
-#include <gtkmm/radiobutton.h>  // node selectors
+#include <gtkmm/radiobutton.h>   // node selectors
+#include <gtkmm/togglebutton.h>  // shortest path
 #include <gtkmm/window.h>
 #include <sigc++/connection.h>        // data store
 #include <sigc++/functors/mem_fun.h>  // data store
@@ -35,6 +36,7 @@ constexpr char WINDOW_TITLE[]("Archipelago Town Editor");
 
 constexpr int SPACING(4);
 constexpr double INITIAL_ZOOM(1.0);
+constexpr int TWO(2);
 
 constexpr int ENJ_PRECISION(4);
 constexpr int ZOOM_PRECISION(1);
@@ -60,16 +62,18 @@ enum Action {
   EDIT_LINK
 };
 
-enum SelectedNode { HOUSING, TRANSPORT, PRODUCTION };
-
 typedef sigc::signal<void> UpdateSignal;
 typedef sigc::signal<void, Action> ActionSignal;
 
 /** Represents a screen location in pixel coordinates */
 struct ScreenLocation {
-  unsigned x;
-  unsigned y;
+  double x;
+  double y;
 };
+
+/* === FUNCTIONS & CLASSES === */
+
+void showErrorDialog(Gtk::Window* window, std::string title, std::string text);
 
 /**
  * The application data store. Contains pointers to data structures as well as
@@ -90,10 +94,12 @@ class Store {
   std::shared_ptr<town::Town> getTown();
 
   double getZoomFactor() const;
-  SelectedNode getSelectedNode() const;
+  node::NodeType getSelectedNode() const;
+  bool getShowShortestPath() const;
 
   void setZoomFactor(double newValue);
-  void setSelectedNode(const SelectedNode& node);
+  void setSelectedNode(const node::NodeType& node);
+  void setShowShortestPath(bool show);
 
  private:
   UpdateSignal updateSignal;
@@ -101,8 +107,9 @@ class Store {
 
   std::shared_ptr<town::Town> town;
 
-  SelectedNode selectedNode;
+  node::NodeType selectedNode;
   double zoomFactor;
+  bool showShortestPath;
 };
 
 /** Shorthand to a C++11 shared pointer of a store instance */
@@ -120,11 +127,10 @@ class Subscription {
 
  protected:
   virtual void onUpdate(SharedStore& store) = 0;
+  SharedStore store;
 
  private:
-  SharedStore store;
   sigc::connection connection;
-
   void triggerUpdate();
 };
 
@@ -219,6 +225,19 @@ class MtaLabel : public Gtk::Label, public Subscription {
   void onUpdate(SharedStore& store) override;
 };
 
+class ShortestPath : public Gtk::ToggleButton {
+ public:
+  ShortestPath() = delete;
+  ShortestPath(SharedStore& store);
+
+ protected:
+  void onUpdate(SharedStore& store);
+
+ private:
+  SharedStore store;
+  void handleToggle();
+};
+
 class Selectors : public Gtk::Box {
  public:
   Selectors() = delete;
@@ -239,9 +258,11 @@ class Sidebar : public Gtk::Box {
  private:
   Group generalGroup, displayGroup, editorGroup, infoGroup;
 
-  Button exitButton, newButton, openButton, saveButton, shortestButton, zoomInButton,
-      zoomOutButton, zoomResetButton, editLinkButton;
+  Button exitButton, newButton, openButton, saveButton, zoomInButton, zoomOutButton,
+      zoomResetButton, editLinkButton;
   Selectors selectors;
+
+  ShortestPath shortestButton;
 
   ZoomLabel zoomLabel;
   EnjLabel enjLabel;
@@ -253,19 +274,21 @@ class Sidebar : public Gtk::Box {
 class Viewport : public Subscription, public graphics::TownView {
  public:
   Viewport() = delete;
-  Viewport(SharedStore& store);
+  Viewport(SharedStore& store, Gtk::Window& window);
 
   void onUpdate(SharedStore& store) override;
 
  private:
-  ScreenLocation leftClickOrigin;
-  ScreenLocation rightClickOrigin;
+  Gtk::Window* window;  // interally used for dialogues
+
+  ScreenLocation leftDragOrigin;
+  bool leftDragEnabled;
 
   bool handlePress(const GdkEventButton* event);
   bool handleRelease(const GdkEventButton* event);
 
-  void handleLeftClick(ScreenLocation origin, ScreenLocation target);
-  void handleRightClick(ScreenLocation origin, ScreenLocation target);
+  /** Convert screenspace coordinates to a worldspace position */
+  tools::Vec2 toWorldSpace(const ScreenLocation& location);
 };
 
 /** The main application window */
@@ -302,21 +325,34 @@ int init(const std::unique_ptr<std::string>& path) {
 
 namespace {
 
+void showErrorDialog(Gtk::Window* window, std::string title, std::string text) {
+  Gtk::MessageDialog dialog(*window, title, false, Gtk::MESSAGE_ERROR);
+  dialog.set_secondary_text(text);
+  dialog.run();
+}
+
 /* === DATA === */
 
 /* == Store == */
 
 Store::Store()
-    : town(new town::Town()), selectedNode(HOUSING), zoomFactor(INITIAL_ZOOM) {}
+    : town(new town::Town()),
+      selectedNode(node::HOUSING),
+      zoomFactor(INITIAL_ZOOM),
+      showShortestPath(false) {}
 
 ActionSignal Store::getActionSignal() { return actionSignal; }
 UpdateSignal Store::getUpdateSignal() { return updateSignal; }
 
 std::shared_ptr<town::Town> Store::getTown() { return town; }
 double Store::getZoomFactor() const { return zoomFactor; }
-SelectedNode Store::getSelectedNode() const { return selectedNode; }
+node::NodeType Store::getSelectedNode() const { return selectedNode; }
+bool Store::getShowShortestPath() const { return showShortestPath; }
 void Store::setZoomFactor(double newValue) { zoomFactor = newValue; }
-void Store::setSelectedNode(const SelectedNode& newValue) { selectedNode = newValue; }
+void Store::setSelectedNode(const node::NodeType& newValue) {
+  selectedNode = newValue;
+}
+void Store::setShowShortestPath(bool newValue) { showShortestPath = newValue; }
 
 /* == Subscription == */
 
@@ -419,10 +455,7 @@ void Controller::loadTown(const std::string& path) {
     *store->getTown() = town::loadFromFile(path);
     store->getUpdateSignal().emit();
   } catch (std::string err) {
-    Gtk::MessageDialog dialog(*window, "Could not open file", false,
-                              Gtk::MESSAGE_ERROR);
-    dialog.set_secondary_text(err);
-    dialog.run();
+    showErrorDialog(window, "Could not open file", err);
     store->getActionSignal().emit(NEW);  // fresh new town
   }
 }
@@ -505,6 +538,20 @@ void MtaLabel::onUpdate(SharedStore& store) {
   set_margin_bottom(SPACING);
 }
 
+/* == ShortestPath == */
+
+ShortestPath::ShortestPath(SharedStore& store)
+    : ToggleButton("Shortest path"), store(store) {
+  signal_toggled().connect(sigc::mem_fun(*this, &ShortestPath::handleToggle));
+  set_margin_bottom(SPACING);
+}
+
+void ShortestPath::handleToggle() {
+  std::cout << "New toggle: " << get_active() << std::endl;
+  store->setShowShortestPath(get_active());
+  store->getUpdateSignal().emit();
+}
+
 /* == Selectors == */
 
 Selectors::Selectors(SharedStore& store)
@@ -528,11 +575,11 @@ Selectors::Selectors(SharedStore& store)
 
 void Selectors::handleChange() {
   if (housing.get_active()) {
-    store->setSelectedNode(HOUSING);
+    store->setSelectedNode(node::HOUSING);
   } else if (transport.get_active()) {
-    store->setSelectedNode(TRANSPORT);
+    store->setSelectedNode(node::TRANSPORT);
   } else if (production.get_active()) {
-    store->setSelectedNode(PRODUCTION);
+    store->setSelectedNode(node::PRODUCTION);
   }
 }
 
@@ -548,12 +595,12 @@ Sidebar::Sidebar(SharedStore& store)
       newButton("New", store, Action::NEW),
       openButton("Open", store, Action::OPEN),
       saveButton("Save", store, Action::SAVE),
-      shortestButton("Shortest path", store, Action::SHORTEST_PATH),
       zoomInButton("Zoom in", store, Action::ZOOM_IN),
       zoomOutButton("Zoom out", store, Action::ZOOM_OUT),
       zoomResetButton("Zoom reset", store, Action::ZOOM_RESET),
       editLinkButton("Edit link", store, Action::EDIT_LINK),
       selectors(store),
+      shortestButton(store),
       zoomLabel(store),
       enjLabel(store),
       ciLabel(store),
@@ -581,47 +628,133 @@ Sidebar::Sidebar(SharedStore& store)
 
 /* == Viewport == */
 
-Viewport::Viewport(SharedStore& store)
-    : Subscription(store), TownView(store->getTown(), INITIAL_ZOOM) {
+Viewport::Viewport(SharedStore& store, Gtk::Window& window)
+    : Subscription(store),
+      TownView(store->getTown(), INITIAL_ZOOM),
+      window(&window),
+      leftDragEnabled(false) {
   add_events(Gdk::BUTTON_PRESS_MASK | Gdk::BUTTON_RELEASE_MASK);
   signal_button_press_event().connect(sigc::mem_fun(*this, &Viewport::handlePress));
   signal_button_release_event().connect(
       sigc::mem_fun(*this, &Viewport::handleRelease));
 }
 
-void Viewport::onUpdate(SharedStore& store) { setZoom(store->getZoomFactor()); }
+void Viewport::onUpdate(SharedStore& store) {
+  setZoom(store->getZoomFactor());
+  store->getTown()->setHighlightShortestPath(store->getShowShortestPath());
+}
 
 bool Viewport::handlePress(const GdkEventButton* event) {
+  ScreenLocation pressLocation({(double)event->x, (double)event->y});
+  auto town(store->getTown());
+
   switch (event->button) {
-    case LEFT_MOUSE:
-      leftClickOrigin = {(unsigned)event->x, (unsigned)event->y};
-      break;
-    case RIGHT_MOUSE:
-      rightClickOrigin = {(unsigned)event->x, (unsigned)event->y};
-      break;
+    case LEFT_MOUSE: {
+      auto clickedNode(town->getNodeAt(toWorldSpace(pressLocation)));
+      std::cout << "Clicked node: " << clickedNode << std::endl;
+      if (clickedNode != NO_LINK) {
+        if (clickedNode == town->getSelectedNode()) {
+          std::cout << "Removing node" << std::endl;
+          town->removeNode(clickedNode);
+        } else {
+          std::cout << "Selecting node " << clickedNode << std::endl;
+          town->selectNode(clickedNode);
+        }
+      } else if (town->getSelectedNode() == NO_LINK) {
+        try {
+          town->addNode(node::Node(store->getSelectedNode(), town->availableUid(),
+                                   toWorldSpace(pressLocation), MIN_CAPACITY),
+                        DIST_MIN);
+        } catch (std::string& err) {
+          showErrorDialog(
+              window, "Could not create a node here",
+              "The position you chose intersected with another node or link.");
+        }
+      } else {
+        std::cout << "Enabling drag" << std::endl;
+        leftDragOrigin = pressLocation;
+        leftDragEnabled = true;
+      }
+    } break;
+
+    case RIGHT_MOUSE: {
+      auto selectedNode(town->getSelectedNode());
+      std::cout << "Selected node: " << selectedNode << std::endl;
+      if (selectedNode != NO_LINK) {
+        std::cout << "Moving to: " << toWorldSpace(pressLocation) << std::endl;
+        try {
+          town->moveNode(selectedNode, toWorldSpace(pressLocation));
+        } catch (std::string& err) {
+          showErrorDialog(window, "Could not move node",
+                          "The new position intersected with another node or link.");
+        }
+      }
+    } break;
   }
+
+  std::cout << "Selected node is " << town->getSelectedNode() << std::endl
+            << std::endl;
+  queue_draw();
   return true;
 }
 
 bool Viewport::handleRelease(const GdkEventButton* event) {
-  switch (event->button) {
-    case LEFT_MOUSE:
-      handleLeftClick(leftClickOrigin, {(unsigned)event->x, (unsigned)event->y});
-      break;
-    case RIGHT_MOUSE:
-      handleRightClick(rightClickOrigin, {(unsigned)event->x, (unsigned)event->y});
-      break;
+  if (event->button != LEFT_MOUSE || !leftDragEnabled) return true;
+
+  ScreenLocation releaseLocation({(double)event->x, (double)event->y});
+  auto town(store->getTown());
+
+  if (releaseLocation.x == leftDragOrigin.x && releaseLocation.y == leftDragOrigin.y) {
+    // Deselect the node
+    std::cout << "Deselected node" << std::endl;
+    town->selectNode(NO_LINK);
+    std ::cout << town->getSelectedNode() << std::endl;
+  } else {
+    // Resize the node
+    std::cout << "Resizing node" << std::endl;
+    auto selectedNode(town->getModifiableNode(town->getSelectedNode()));
+
+    if (selectedNode != nullptr) {
+      unsigned oldCapacity(selectedNode->getCapacity());
+
+      tools::Vec2 nodePosition(selectedNode->getPosition());
+      tools::Vec2 dragStart(toWorldSpace(leftDragOrigin));
+      tools::Vec2 dragEnd(toWorldSpace(releaseLocation));
+
+      auto radiusDifference((dragEnd - nodePosition).norm() -
+                            (dragStart - nodePosition).norm());
+      try {
+        town->resizeNode(selectedNode->getUid(),
+                         selectedNode->radius() + radiusDifference);
+      } catch (std::string& err) {
+        selectedNode->setCapacity(oldCapacity);
+        showErrorDialog(window, "Could not resize node",
+                        "The requested size intersected with another node or link.");
+      }
+    }
   }
+
+  std::cout << "Disabling drag" << std::endl;
+  leftDragEnabled = false;
+  queue_draw();
   return true;
 }
 
-void Viewport::handleLeftClick(ScreenLocation origin, ScreenLocation target) {
-  std::cout << "Left click : (" << origin.x << ", " << origin.y << ") -> (" << target.x
-            << ", " << target.y << ")" << std::endl;
-}
-void Viewport::handleRightClick(ScreenLocation origin, ScreenLocation target) {
-  std::cout << "Right click: (" << origin.x << ", " << origin.y << ") -> (" << target.x
-            << ", " << target.y << ")" << std::endl;
+tools::Vec2 Viewport::toWorldSpace(const ScreenLocation& location) {
+  Gtk::Allocation allocation = get_allocation();
+  const double width(allocation.get_width());
+  const double height(allocation.get_height());
+
+  const double shortestSide(width <= height ? width : height);
+
+  // The relationship between screenspace and worldspace units
+  const double conversionFactor(TWO * DIM_MAX /
+                                (shortestSide * store->getZoomFactor()));
+
+  // Get distance from the middle of the screen which is the town origin
+  // The y-axis is inverted
+  return tools::Vec2(location.x - (width / TWO), -(location.y - (height / TWO))) *
+         conversionFactor;
 }
 
 /* == Window == */
@@ -629,7 +762,7 @@ void Viewport::handleRightClick(ScreenLocation origin, ScreenLocation target) {
 Window::Window()
     : controller(*this),
       sidebar(controller.getStore()),
-      viewport(controller.getStore()) {
+      viewport(controller.getStore(), *this) {
   set_title(WINDOW_TITLE);
 
   viewport.set_hexpand(true);

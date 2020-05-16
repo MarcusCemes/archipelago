@@ -28,7 +28,7 @@ class Node : public tools::Renderable {
   Node() = delete;
   Node(NodeType type, unsigned uid, tools::Vec2 position, unsigned capacity);
 
-  void render(tools::RenderContext& context) const override;
+  void render(tools::RenderContext& context) override;
 
   /* Accessors/Manipulators */
 
@@ -46,10 +46,19 @@ class Node : public tools::Renderable {
    */
   void setCapacity(unsigned capacity);
 
+  bool getSelected() const;
+  void setSelected(bool selected);
+
+  bool getHighlighted() const;
+  void setHighlighted(bool highlighted);
+
   /* Methods */
 
   /** Calculate the Node's radius, based on its current capacity */
   double radius() const;
+
+  /** Calculates the required capcity change to set the radius */
+  void setRadius(unsigned radius);
 
   /** Serialise the node to a file-format format */
   std::string toString() const;
@@ -59,6 +68,11 @@ class Node : public tools::Renderable {
   unsigned uid;
   tools::Vec2 position;
   unsigned capacity;
+
+  /** Whether the node is uniquely selected in the view */
+  bool selected;
+  /** Whether the node should render differently to emphasise it */
+  bool highlighted;
 
   /** Validate and set the uid. This should be immutable during the lifetime */
   void setUid(unsigned uid);

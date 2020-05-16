@@ -35,14 +35,15 @@ namespace node {
 
 Node::Node(NodeType type, unsigned newUid, tools::Vec2 position,
            unsigned initialCapacity)
-    : type(type), position(position) {
+    : type(type), position(position), selected(false), highlighted(false) {
   setUid(newUid);
   setCapacity(initialCapacity);
 }
 
-void Node::render(tools::RenderContext& ctx) const {
+void Node::render(tools::RenderContext& ctx) {
   unsigned nodeRadius(radius());
 
+  ctx.setColour(selected ? tools::ORANGE : highlighted ? tools::GREEN : tools::BLACK);
   ctx.draw(tools::Circle(position, nodeRadius));
 
   switch (type) {
@@ -76,7 +77,24 @@ void Node::setCapacity(unsigned newCapacity) {
   capacity = newCapacity;
 }
 
+bool Node::getSelected() const { return selected; }
+
+void Node::setSelected(bool isSelected) { selected = isSelected; }
+
+bool Node::getHighlighted() const { return highlighted; }
+
+void Node::setHighlighted(bool isHighlighted) { highlighted = isHighlighted; }
+
 double Node::radius() const { return sqrt(capacity); }
+
+void Node::setRadius(unsigned newRadius) {
+  capacity = newRadius * newRadius;  // inverse of sqrt
+  if (capacity < MIN_CAPACITY) {
+    capacity = MIN_CAPACITY;
+  } else if (capacity > MAX_CAPACITY) {
+    capacity = MAX_CAPACITY;
+  }
+}
 
 std::string Node::toString() const {
   std::ostringstream stream;
