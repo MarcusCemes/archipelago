@@ -47,7 +47,7 @@ class Town : public tools::Renderable {
   Town(std::vector<node::Node> nodes = std::vector<node::Node>(),
        std::vector<node::Link> links = std::vector<node::Link>());
 
-  void render(tools::RenderContext& context) const override;
+  void render(tools::RenderContext& context) override;
 
   /* Accessors/Manipulators */
 
@@ -67,7 +67,13 @@ class Town : public tools::Renderable {
   std::vector<unsigned> getNodes() const;
 
   /** Removes a node by uid from the town. Does not check if the node exists */
-  void removeNode(const unsigned uid);
+  void removeNode(unsigned uid);
+
+  /** Moves a node to a new position, or throws a string error on collision */
+  void moveNode(unsigned uid, const tools::Vec2& newPosition);
+
+  /** Resizes the given node. Careful! The new size is the radius, not the capacity */
+  void resizeNode(unsigned uid, unsigned newRadius);
 
   /**
    * Adds a link to the town
@@ -107,6 +113,25 @@ class Town : public tools::Renderable {
    */
   PathFindingResult pathFind(unsigned origin, const node::NodeType& destination) const;
 
+  /** Returns the node that intersects with the given piece of space, or NO_LINK */
+  unsigned getNodeAt(tools::Vec2 position);
+
+  /** Returns the uid of the selected node, or NO_LINK */
+  unsigned getSelectedNode() const;
+  /** Marks the node as selected, or NO_LINK to deselect the currently selected node */
+  void selectNode(unsigned node);
+
+  /** Whether to highlight the selected node's shortest paths when rendering */
+  void setHighlightShortestPath(bool highlight);
+
+  /** Marks the given nodes as highlighted */
+  void highlightNodes(const std::vector<unsigned>& nodes, bool deselectOthers);
+  /** Marks all nodes as not highlighted */
+  void clearHighlightedNodes();
+
+  /** Returns an available uid value */
+  unsigned availableUid() const;
+
  private:
   /* Attributes */
 
@@ -116,16 +141,28 @@ class Town : public tools::Renderable {
   /** A list of Link instances that are part of the town */
   std::vector<node::Link> links;
 
+  /** The selected node, or NO_LINK if no node is selected */
+  unsigned selectedNode;
+
+  /**
+   * Whether to highlight the shortest path from the selected node to a transport
+   * and production node.
+  */
+  bool highlightShortestPath;
+
   /* Methods */
 
   /** Checks whether the given node intersects any town links */
   void checkNodeSuperposition(const node::Node& node,
                               const double safetyDistance = DEFAULT_SAFETY);
 
-  /** Checks whether the given node intersects any town links */
+  /**
+   * Checks whether the given node intersects any town links.
+   * Does not require the node to be a part of the town.
+   */
   void checkLinkSuperposition(const node::Node& node,
                               const double safetyDistance = DEFAULT_SAFETY);
-  /** Checks whether the given link intersects any town nodes */
+  /** Checks whether the given link intersects any town nodes. */
   void checkLinkSuperposition(const node::Link& link,
                               const double safetyDistance = DEFAULT_SAFETY);
 };

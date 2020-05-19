@@ -80,8 +80,8 @@ void CairoContext::draw(const tools::Circle& obj) {
   cr->arc(position.getX(), position.getY(), obj.getRadius(), ZERO, D_PI);
   cr->set_source_rgb(WHITE[0], WHITE[1], WHITE[2]);
   cr->fill_preserve();
-  setSourceFromColour();
   cr->set_line_width(STROKE_WIDTH);
+  setSourceFromColour();
   cr->stroke();
   cr->restore();
 }
@@ -91,6 +91,7 @@ void CairoContext::draw(const tools::Line& obj) {
   cr->move_to(obj.getPointA().getX(), obj.getPointA().getY());
   cr->line_to(obj.getPointB().getX(), obj.getPointB().getY());
   cr->set_line_width(STROKE_WIDTH);
+  setSourceFromColour();
   cr->stroke();
   cr->restore();
 }
@@ -103,6 +104,7 @@ void CairoContext::draw(const tools::Polygon4& obj) {
   cr->line_to(obj.getD().getX(), obj.getD().getY());
   cr->close_path();
   cr->set_line_width(STROKE_WIDTH);
+  setSourceFromColour();
   cr->stroke();
   cr->restore();
 }

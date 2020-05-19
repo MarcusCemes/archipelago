@@ -84,7 +84,7 @@ namespace town {
 
 /* === CLASSES === */
 
-Town::Town(Nodes nodes, Links links) {
+Town::Town(Nodes nodes, Links links) : selectedNode(NO_LINK) {
   for (const auto& node : nodes) {
     addNode(node);
   }
@@ -93,12 +93,44 @@ Town::Town(Nodes nodes, Links links) {
   }
 }
 
-void Town::render(tools::RenderContext& ctx) const {
-  for (const auto& link : links) {
-    ctx.draw(tools::Line(getNode(link.getUid0())->getPosition(),
-                         getNode(link.getUid1())->getPosition()));
+void Town::render(tools::RenderContext& ctx) {
+  set<unsigned> tPathNodes, pPathNodes;
+
+  // Path finding calculations
+  clearHighlightedNodes();
+  if (highlightShortestPath && selectedNode != NO_LINK &&
+      getNode(selectedNode)->getType() == node::HOUSING) {
+    const auto tPath(pathFind(selectedNode, node::TRANSPORT));
+    if (tPath.success) {
+      highlightNodes(*tPath.path, false);
+      for (const auto& uid : *tPath.path) tPathNodes.insert(uid);
+    }
+
+    const auto pPath(pathFind(selectedNode, node::PRODUCTION));
+    if (pPath.success) {
+      highlightNodes(*pPath.path, false);
+      for (const auto& uid : *pPath.path) pPathNodes.insert(uid);
+    }
   }
-  for (const auto& node : nodes) {
+
+  // Render links, highlight if they are in one of the path finding chains
+  for (const auto& link : links) {
+    const auto uid0((link.getUid0()));
+    const auto uid1((link.getUid1()));
+    bool highlighted(false);
+
+    if ((tPathNodes.find(uid0) != tPathNodes.end() &&
+         tPathNodes.find(uid1) != tPathNodes.end()) ||
+        (pPathNodes.find(uid0) != pPathNodes.end() &&
+         pPathNodes.find(uid1) != pPathNodes.end()))
+      highlighted = true;
+
+    ctx.setColour(highlighted ? tools::GREEN : tools::BLACK);
+    ctx.draw(tools::Line(getNode(uid0)->getPosition(), getNode(uid1)->getPosition()));
+  }
+
+  // Render nodes, they know if they are highlighted
+  for (auto& node : nodes) {
     node.second.render(ctx);
   }
 }
@@ -139,7 +171,52 @@ vector<unsigned> Town::getNodes() const {
   return nodeUids;
 }
 
-void Town::removeNode(const unsigned uid) { nodes.erase(uid); }
+void Town::removeNode(unsigned uid) {
+  // Efficiently delete links containing this node's uid
+  for (auto it(links.begin()); it != links.end(); ++it)
+    if (it->getUid0() == uid || it->getUid1() == uid) {
+      *it = std::move(links.back());
+      links.pop_back();
+      --it;
+    }
+
+  if (selectedNode == uid) selectedNode = NO_LINK;
+  nodes.erase(uid);
+}
+
+void Town::moveNode(unsigned uid, const tools::Vec2& newPosition) {
+  auto node(nodes.find(uid));
+  if (node == nodes.end()) return;
+  tools::Vec2 oldPosition(node->second.getPosition());
+
+  try {
+    node->second.setPosition(newPosition);
+    checkNodeSuperposition(node->second, DIST_MIN);
+    checkLinkSuperposition(node->second, DIST_MIN);
+    for (const auto& link : links)
+      if (link.getUid0() == uid || link.getUid1() == uid)
+        checkLinkSuperposition(link, DIST_MIN);
+
+  } catch (std::string err) {
+    node->second.setPosition(oldPosition);
+    throw err;
+  }
+}
+
+void Town::resizeNode(unsigned uid, unsigned newRadius) {
+  auto node(nodes.find(uid));
+  if (node != nodes.end()) {
+    const unsigned oldCapacity(node->second.getCapacity());
+    try {
+      node->second.setRadius(newRadius);
+      checkNodeSuperposition(node->second, DIST_MIN);
+      checkLinkSuperposition(node->second, DIST_MIN);
+    } catch (std::string& err) {
+      node->second.setCapacity(oldCapacity);
+      throw err;
+    }
+  }
+}
 
 void Town::addLink(const Link& link) {
   // Check that the link doesn't already exist
@@ -337,6 +414,57 @@ town::PathFindingResult Town::pathFind(unsigned originUid,
   return generatePathResult(graph, NO_LINK, INFINITE_TIME);
 }
 
+unsigned Town::getNodeAt(tools::Vec2 position) {
+  for (const auto& node : nodes)
+    if ((node.second.getPosition() - position).norm() <= node.second.radius())
+      return node.second.getUid();
+
+  return NO_LINK;
+}
+
+unsigned Town::getSelectedNode() const { return selectedNode; }
+
+void Town::selectNode(unsigned nodeToSelect) {
+  // Deselect the currently selected node
+  if (selectedNode != NO_LINK) {
+    auto node(getModifiableNode(selectedNode));
+    if (node != nullptr) node->setSelected(false);
+  }
+
+  // Select the new active node
+  selectedNode = nodeToSelect;
+  if (nodeToSelect != NO_LINK) {
+    auto node(getModifiableNode(nodeToSelect));
+    if (node != nullptr) {
+      node->setSelected(true);
+    }
+  }
+}
+
+void Town::setHighlightShortestPath(bool highlight) {
+  highlightShortestPath = highlight;
+}
+
+void Town::highlightNodes(const std::vector<unsigned>& highlighted, bool deselect) {
+  if (deselect) clearHighlightedNodes();
+
+  for (const auto& uid : highlighted) {
+    auto node(getModifiableNode(uid));
+    if (node != nullptr) node->setHighlighted(true);
+  }
+}
+
+void Town::clearHighlightedNodes() {
+  for (auto& node : nodes) node.second.setHighlighted(false);
+}
+
+unsigned Town::availableUid() const {
+  for (size_t i(0); i <= NO_LINK; ++i)
+    if (nodes.find(i) == nodes.end()) return i;
+
+  return NO_LINK;
+}
+
 /* == Private members == */
 
 /** Checks whether the given node intersects any town links */
@@ -351,9 +479,9 @@ void Town::checkLinkSuperposition(const Node& testNode, const double safetyDista
     if (uid == link0 || uid == link1) continue;
     radius = testNode.radius();
 
-    if (minPointSegmentDistance(
-            nodes.at(uid).getPosition(), nodes.at(link0).getPosition(),
-            nodes.at(link1).getPosition()) <= (radius + safetyDistance)) {
+    if (minPointSegmentDistance(testNode.getPosition(), nodes.at(link0).getPosition(),
+                                nodes.at(link1).getPosition()) <=
+        (radius + safetyDistance)) {
       throw error::node_link_superposition(uid);
     }
   }
@@ -387,6 +515,7 @@ void Town::checkNodeSuperposition(const Node& testNode, const double safetyDista
   double distance;
   for (const auto& townNodePair : nodes) {
     const Node* townNode(&townNodePair.second);
+    if (testNode.getUid() == townNode->getUid()) continue;
 
     distance = (testNode.getPosition() - townNode->getPosition()).norm();
     if (distance <= testNode.radius() + townNode->radius() + safetyDistance) {
@@ -572,7 +701,6 @@ void writeTown(ostream& stream, const Town& town) {
 void printNodeType(ostream& stream, const Town& town, const NodeType& type) {
   unsigned count(0);
   vector<unsigned> uids;
-  const Node* node;
   Vec2 position;
 
   stream << std::endl;

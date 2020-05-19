@@ -113,7 +113,7 @@ class RenderContext {
 
 /** An abstract class of an object that can be rendered */
 class Renderable {
-  virtual void render(tools::RenderContext& context) const = 0;
+  virtual void render(tools::RenderContext& context) = 0;
 };
 
 /* === FUNCTIONS === */
