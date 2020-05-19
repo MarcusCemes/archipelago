@@ -101,12 +101,16 @@ void Town::render(tools::RenderContext& ctx) {
   if (highlightShortestPath && selectedNode != NO_LINK &&
       getNode(selectedNode)->getType() == node::HOUSING) {
     const auto tPath(pathFind(selectedNode, node::TRANSPORT));
-    if (tPath.success) highlightNodes(*tPath.path, false);
-    for (const auto& uid : *tPath.path) tPathNodes.insert(uid);
+    if (tPath.success) {
+      highlightNodes(*tPath.path, false);
+      for (const auto& uid : *tPath.path) tPathNodes.insert(uid);
+    }
 
     const auto pPath(pathFind(selectedNode, node::PRODUCTION));
-    if (pPath.success) highlightNodes(*pPath.path, false);
-    for (const auto& uid : *pPath.path) pPathNodes.insert(uid);
+    if (pPath.success) {
+      highlightNodes(*pPath.path, false);
+      for (const auto& uid : *pPath.path) pPathNodes.insert(uid);
+    }
   }
 
   // Render links, highlight if they are in one of the path finding chains
@@ -189,6 +193,9 @@ void Town::moveNode(unsigned uid, const tools::Vec2& newPosition) {
     node->second.setPosition(newPosition);
     checkNodeSuperposition(node->second, DIST_MIN);
     checkLinkSuperposition(node->second, DIST_MIN);
+    for (const auto& link : links)
+      if (link.getUid0() == uid || link.getUid1() == uid)
+        checkLinkSuperposition(link, DIST_MIN);
 
   } catch (std::string err) {
     node->second.setPosition(oldPosition);

@@ -41,6 +41,8 @@ constexpr int TWO(2);
 constexpr int ENJ_PRECISION(4);
 constexpr int ZOOM_PRECISION(1);
 constexpr double MTA_FIXED_LIMIT(1E4);
+constexpr int SIDEBAR_WIDTH(150);
+constexpr int DEFAULT_SIZE(-1);
 
 /** DELTA_ZOOM is not perfectly representable as a binary floating point number */
 constexpr double ZOOM_ERROR(1E-10);
@@ -50,17 +52,7 @@ constexpr unsigned LEFT_MOUSE(1U);
 constexpr unsigned RIGHT_MOUSE(3U);
 
 /** Actions that can be triggered by the interface and dispatched to the store */
-enum Action {
-  EXIT,
-  NEW,
-  OPEN,
-  SAVE,
-  SHORTEST_PATH,
-  ZOOM_IN,
-  ZOOM_OUT,
-  ZOOM_RESET,
-  EDIT_LINK
-};
+enum Action { EXIT, NEW, OPEN, SAVE, ZOOM_IN, ZOOM_OUT, ZOOM_RESET };
 
 typedef sigc::signal<void> UpdateSignal;
 typedef sigc::signal<void, Action> ActionSignal;
@@ -96,10 +88,12 @@ class Store {
   double getZoomFactor() const;
   node::NodeType getSelectedNode() const;
   bool getShowShortestPath() const;
+  bool getEditLink() const;
 
   void setZoomFactor(double newValue);
   void setSelectedNode(const node::NodeType& node);
   void setShowShortestPath(bool show);
+  void setEditLink(bool edit);
 
  private:
   UpdateSignal updateSignal;
@@ -110,6 +104,7 @@ class Store {
   node::NodeType selectedNode;
   double zoomFactor;
   bool showShortestPath;
+  bool editLink;
 };
 
 /** Shorthand to a C++11 shared pointer of a store instance */
@@ -238,6 +233,19 @@ class ShortestPath : public Gtk::ToggleButton {
   void handleToggle();
 };
 
+class EditLink : public Gtk::ToggleButton {
+ public:
+  EditLink() = delete;
+  EditLink(SharedStore& store);
+
+ protected:
+  void onUpdate(SharedStore& store);
+
+ private:
+  SharedStore store;
+  void handleToggle();
+};
+
 class Selectors : public Gtk::Box {
  public:
   Selectors() = delete;
@@ -259,10 +267,11 @@ class Sidebar : public Gtk::Box {
   Group generalGroup, displayGroup, editorGroup, infoGroup;
 
   Button exitButton, newButton, openButton, saveButton, zoomInButton, zoomOutButton,
-      zoomResetButton, editLinkButton;
+      zoomResetButton;
   Selectors selectors;
 
   ShortestPath shortestButton;
+  EditLink editLinkButton;
 
   ZoomLabel zoomLabel;
   EnjLabel enjLabel;
@@ -348,11 +357,13 @@ std::shared_ptr<town::Town> Store::getTown() { return town; }
 double Store::getZoomFactor() const { return zoomFactor; }
 node::NodeType Store::getSelectedNode() const { return selectedNode; }
 bool Store::getShowShortestPath() const { return showShortestPath; }
+bool Store::getEditLink() const { return editLink; }
 void Store::setZoomFactor(double newValue) { zoomFactor = newValue; }
 void Store::setSelectedNode(const node::NodeType& newValue) {
   selectedNode = newValue;
 }
 void Store::setShowShortestPath(bool newValue) { showShortestPath = newValue; }
+void Store::setEditLink(bool newValue) { editLink = newValue; }
 
 /* == Subscription == */
 
@@ -405,18 +416,7 @@ void Controller::handleAction(const Action& action) {
     case Action::ZOOM_RESET:
       changeZoom(INITIAL_ZOOM, true);
       break;
-
-    default:
-      // Required by specifications for the second project hand in
-      std::cout << "Button with enum value " << action << " was clicked" << std::endl;
-      noAction();
   }
-}
-
-void Controller::noAction() {
-  Gtk::MessageDialog dialog(*window, "You clicked a button!");
-  dialog.set_secondary_text("Unfortunately, it doesn't do anything yet");
-  dialog.run();
 }
 
 void Controller::changeZoom(double zoomFactor, bool absolute) {
@@ -538,6 +538,18 @@ void MtaLabel::onUpdate(SharedStore& store) {
   set_margin_bottom(SPACING);
 }
 
+/* == EditLink == */
+
+EditLink::EditLink(SharedStore& store) : ToggleButton("Edit link"), store(store) {
+  signal_toggled().connect(sigc::mem_fun(*this, &EditLink::handleToggle));
+  set_margin_bottom(SPACING);
+}
+
+void EditLink::handleToggle() {
+  store->setEditLink(get_active());
+  store->getUpdateSignal().emit();
+}
+
 /* == ShortestPath == */
 
 ShortestPath::ShortestPath(SharedStore& store)
@@ -547,7 +559,6 @@ ShortestPath::ShortestPath(SharedStore& store)
 }
 
 void ShortestPath::handleToggle() {
-  std::cout << "New toggle: " << get_active() << std::endl;
   store->setShowShortestPath(get_active());
   store->getUpdateSignal().emit();
 }
@@ -598,9 +609,9 @@ Sidebar::Sidebar(SharedStore& store)
       zoomInButton("Zoom in", store, Action::ZOOM_IN),
       zoomOutButton("Zoom out", store, Action::ZOOM_OUT),
       zoomResetButton("Zoom reset", store, Action::ZOOM_RESET),
-      editLinkButton("Edit link", store, Action::EDIT_LINK),
       selectors(store),
       shortestButton(store),
+      editLinkButton(store),
       zoomLabel(store),
       enjLabel(store),
       ciLabel(store),
@@ -624,6 +635,7 @@ Sidebar::Sidebar(SharedStore& store)
   add(displayGroup);
   add(editorGroup);
   add(infoGroup);
+  set_size_request(SIDEBAR_WIDTH, DEFAULT_SIZE);
 }
 
 /* == Viewport == */
@@ -647,17 +659,27 @@ void Viewport::onUpdate(SharedStore& store) {
 bool Viewport::handlePress(const GdkEventButton* event) {
   ScreenLocation pressLocation({(double)event->x, (double)event->y});
   auto town(store->getTown());
+  if (event->type != GDK_BUTTON_PRESS) return true;  // ignore double clicks
 
   switch (event->button) {
     case LEFT_MOUSE: {
       auto clickedNode(town->getNodeAt(toWorldSpace(pressLocation)));
-      std::cout << "Clicked node: " << clickedNode << std::endl;
       if (clickedNode != NO_LINK) {
-        if (clickedNode == town->getSelectedNode()) {
-          std::cout << "Removing node" << std::endl;
+        const unsigned selectedNode(town->getSelectedNode());
+        if (clickedNode == selectedNode) {
           town->removeNode(clickedNode);
+        } else if (store->getEditLink() && selectedNode != NO_LINK) {
+          node::Link newLink({selectedNode, clickedNode});
+          try {
+            if (store->getTown()->hasLink(newLink)) {
+              store->getTown()->removeLink(newLink);
+            } else {
+              store->getTown()->addLink(newLink);
+            }
+          } catch (std::string err) {
+            showErrorDialog(window, "Could not modify link", err);
+          }
         } else {
-          std::cout << "Selecting node " << clickedNode << std::endl;
           town->selectNode(clickedNode);
         }
       } else if (town->getSelectedNode() == NO_LINK) {
@@ -671,7 +693,6 @@ bool Viewport::handlePress(const GdkEventButton* event) {
               "The position you chose intersected with another node or link.");
         }
       } else {
-        std::cout << "Enabling drag" << std::endl;
         leftDragOrigin = pressLocation;
         leftDragEnabled = true;
       }
@@ -679,9 +700,7 @@ bool Viewport::handlePress(const GdkEventButton* event) {
 
     case RIGHT_MOUSE: {
       auto selectedNode(town->getSelectedNode());
-      std::cout << "Selected node: " << selectedNode << std::endl;
       if (selectedNode != NO_LINK) {
-        std::cout << "Moving to: " << toWorldSpace(pressLocation) << std::endl;
         try {
           town->moveNode(selectedNode, toWorldSpace(pressLocation));
         } catch (std::string& err) {
@@ -692,8 +711,7 @@ bool Viewport::handlePress(const GdkEventButton* event) {
     } break;
   }
 
-  std::cout << "Selected node is " << town->getSelectedNode() << std::endl
-            << std::endl;
+  store->getUpdateSignal().emit();
   queue_draw();
   return true;
 }
@@ -706,12 +724,9 @@ bool Viewport::handleRelease(const GdkEventButton* event) {
 
   if (releaseLocation.x == leftDragOrigin.x && releaseLocation.y == leftDragOrigin.y) {
     // Deselect the node
-    std::cout << "Deselected node" << std::endl;
     town->selectNode(NO_LINK);
-    std ::cout << town->getSelectedNode() << std::endl;
   } else {
     // Resize the node
-    std::cout << "Resizing node" << std::endl;
     auto selectedNode(town->getModifiableNode(town->getSelectedNode()));
 
     if (selectedNode != nullptr) {
@@ -734,8 +749,8 @@ bool Viewport::handleRelease(const GdkEventButton* event) {
     }
   }
 
-  std::cout << "Disabling drag" << std::endl;
   leftDragEnabled = false;
+  store->getUpdateSignal().emit();
   queue_draw();
   return true;
 }
