@@ -350,7 +350,6 @@ double Town::mta() {
 
 /**
  * Our only function that exceeds 40 lines, favourable for optimisation and spacing
- * An fast implementation of the Dijkstra algorithm.
  */
 town::PathFindingResult Town::pathFind(unsigned originUid,
                                        const NodeType& searchType) const {
@@ -378,33 +377,32 @@ town::PathFindingResult Town::pathFind(unsigned originUid,
     currentGraphNode = graph.find(currentUid);
     currentDistance = currentGraphNode->second.distance;
     currentType = currentNode->getType();
+    auto neighbourNodes(getLinkedNodes(currentGraphNode->first));
+
+    if (currentType == searchType)
+      return generatePathResult(graph, currentUid, currentDistance);
 
     // Evaluate all graph neighbours
-    for (const auto& neighbourUid : getLinkedNodes(currentGraphNode->first)) {
-      graphNeighbour = graph.find(neighbourUid);
-      if (graphNeighbour->second.visited) continue;
+    if (currentType != node::PRODUCTION) {
+      for (const auto& neighbourUid : neighbourNodes) {
+        graphNeighbour = graph.find(neighbourUid);
+        if (graphNeighbour->second.visited) continue;
 
-      neighbourNode = getNode(neighbourUid);
-      neighbourNode = getNode(neighbourUid);
-      neighbourType = neighbourNode->getType();
-      neighbourDistance =
-          (neighbourNode->getPosition() - currentNode->getPosition()).norm();
+        neighbourNode = getNode(neighbourUid);
+        neighbourNode = getNode(neighbourUid);
+        neighbourType = neighbourNode->getType();
+        neighbourDistance =
+            (neighbourNode->getPosition() - currentNode->getPosition()).norm();
 
-      neighbourDistance =
-          currentDistance +
-          computeAccessTime(currentType, neighbourType, neighbourDistance);
+        neighbourDistance =
+            currentDistance +
+            computeAccessTime(currentType, neighbourType, neighbourDistance);
 
-      if (neighbourDistance < graphNeighbour->second.distance) {
-        graphNeighbour->second.distance = neighbourDistance;
-        graphNeighbour->second.parent = currentUid;
+        if (neighbourDistance < graphNeighbour->second.distance) {
+          graphNeighbour->second.distance = neighbourDistance;
+          graphNeighbour->second.parent = currentUid;
+        }
       }
-
-      // Mark production nodes as visited to deny through-access to other nodes
-      if (neighbourType == node::PRODUCTION) graphNeighbour->second.visited = true;
-
-      // Return condition: verify the destination condition has been met
-      if (neighbourType == searchType)
-        return generatePathResult(graph, neighbourUid, neighbourDistance);
     }
 
     // Mark the node as visited to progress the algorithm
