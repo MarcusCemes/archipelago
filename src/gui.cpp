@@ -356,8 +356,8 @@ Store::Store()
     : town(new town::Town()),
       selectedNode(node::HOUSING),
       zoomFactor(INITIAL_ZOOM),
-      editLink(false),
-      showShortestPath(false) {}
+      showShortestPath(false),
+      editLink(false) {}
 
 ActionSignal Store::getActionSignal() { return actionSignal; }
 UpdateSignal Store::getUpdateSignal() { return updateSignal; }
@@ -378,9 +378,9 @@ void Store::setEditLink(bool newValue) { editLink = newValue; }
 
 Subscription::Subscription(SharedStore& store, bool fullRender)
     : store(store),
+      fullRender(fullRender),
       connection(store->getUpdateSignal().connect(
-          sigc::mem_fun(*this, &Subscription::triggerUpdate))),
-      fullRender(fullRender) {}
+          sigc::mem_fun(*this, &Subscription::triggerUpdate))) {}
 Subscription::~Subscription() { connection.disconnect(); }
 
 void Subscription::triggerUpdate(bool doFullRender) {
