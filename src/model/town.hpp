@@ -147,7 +147,7 @@ class Town : public tools::Renderable {
   /**
    * Whether to highlight the shortest path from the selected node to a transport
    * and production node.
-  */
+   */
   bool highlightShortestPath;
 
   /* Methods */

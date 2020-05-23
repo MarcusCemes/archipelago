@@ -54,7 +54,11 @@ constexpr unsigned RIGHT_MOUSE(3U);
 /** Actions that can be triggered by the interface and dispatched to the store */
 enum Action { EXIT, NEW, OPEN, SAVE, ZOOM_IN, ZOOM_OUT, ZOOM_RESET };
 
-typedef sigc::signal<void> UpdateSignal;
+/**
+ * Initiate a re-render of the gui. If the parameter is true, do a full render
+ * with expensive calculations, if false, do an economic render.
+ */
+typedef sigc::signal<void, bool> UpdateSignal;
 typedef sigc::signal<void, Action> ActionSignal;
 
 /** Represents a screen location in pixel coordinates */
@@ -117,7 +121,7 @@ typedef std::shared_ptr<Store> SharedStore;
 class Subscription {
  public:
   Subscription() = delete;
-  Subscription(SharedStore& store);
+  Subscription(SharedStore& store, bool fullRender = true);
   ~Subscription();
 
  protected:
@@ -125,8 +129,9 @@ class Subscription {
   SharedStore store;
 
  private:
+  bool fullRender;
   sigc::connection connection;
-  void triggerUpdate();
+  void triggerUpdate(bool doFullRender);
 };
 
 /** The brain of the GUI, handles actions and updates the central store. */
@@ -296,6 +301,9 @@ class Viewport : public Subscription, public graphics::TownView {
   bool handlePress(const GdkEventButton* event);
   bool handleRelease(const GdkEventButton* event);
 
+  void handleLeftClick(const ScreenLocation& location);
+  void handleRightClick(const ScreenLocation& location);
+
   /** Convert screenspace coordinates to a worldspace position */
   tools::Vec2 toWorldSpace(const ScreenLocation& location);
 };
@@ -367,13 +375,16 @@ void Store::setEditLink(bool newValue) { editLink = newValue; }
 
 /* == Subscription == */
 
-Subscription::Subscription(SharedStore& store)
+Subscription::Subscription(SharedStore& store, bool fullRender)
     : store(store),
       connection(store->getUpdateSignal().connect(
-          sigc::mem_fun(*this, &Subscription::triggerUpdate))) {}
+          sigc::mem_fun(*this, &Subscription::triggerUpdate))),
+      fullRender(fullRender) {}
 Subscription::~Subscription() { connection.disconnect(); }
 
-void Subscription::triggerUpdate() { onUpdate(store); }
+void Subscription::triggerUpdate(bool doFullRender) {
+  if (doFullRender || fullRender) onUpdate(store);
+}
 
 /* == Controller == */
 
@@ -394,7 +405,7 @@ void Controller::handleAction(const Action& action) {
 
     case Action::NEW:
       *store->getTown() = town::Town();
-      store->getUpdateSignal().emit();
+      store->getUpdateSignal().emit(true);
       break;
 
     case Action::OPEN:
@@ -424,7 +435,7 @@ void Controller::changeZoom(double zoomFactor, bool absolute) {
   double newZoom(absolute ? zoomFactor : currentZoom += zoomFactor);
   if (newZoom + ZOOM_ERROR >= MIN_ZOOM && newZoom - ZOOM_ERROR <= MAX_ZOOM) {
     store->setZoomFactor(newZoom);
-    store->getUpdateSignal().emit();
+    store->getUpdateSignal().emit(false);
   }
 }
 
@@ -453,7 +464,7 @@ void Controller::saveTown() {
 void Controller::loadTown(const std::string& path) {
   try {
     *store->getTown() = town::loadFromFile(path);
-    store->getUpdateSignal().emit();
+    store->getUpdateSignal().emit(true);
   } catch (std::string err) {
     showErrorDialog(window, "Could not open file", err);
     store->getActionSignal().emit(NEW);  // fresh new town
@@ -504,7 +515,7 @@ void ZoomLabel::onUpdate(SharedStore& store) {
 
 /* == EnjLabel == */
 
-EnjLabel::EnjLabel(SharedStore& store) : Subscription(store) {}
+EnjLabel::EnjLabel(SharedStore& store) : Subscription(store, false) {}
 
 void EnjLabel::onUpdate(SharedStore& store) {
   std::ostringstream formatter;
@@ -517,7 +528,7 @@ void EnjLabel::onUpdate(SharedStore& store) {
 
 /* == CiLabel == */
 
-CiLabel::CiLabel(SharedStore& store) : Subscription(store) {}
+CiLabel::CiLabel(SharedStore& store) : Subscription(store, false) {}
 
 void CiLabel::onUpdate(SharedStore& store) {
   std::ostringstream formatter;
@@ -528,7 +539,7 @@ void CiLabel::onUpdate(SharedStore& store) {
 
 /* == MtaLabel == */
 
-MtaLabel::MtaLabel(SharedStore& store) : Subscription(store) {}
+MtaLabel::MtaLabel(SharedStore& store) : Subscription(store, false) {}
 
 void MtaLabel::onUpdate(SharedStore& store) {
   std::stringstream formatter;
@@ -547,7 +558,7 @@ EditLink::EditLink(SharedStore& store) : ToggleButton("Edit link"), store(store)
 
 void EditLink::handleToggle() {
   store->setEditLink(get_active());
-  store->getUpdateSignal().emit();
+  store->getUpdateSignal().emit(false);
 }
 
 /* == ShortestPath == */
@@ -560,7 +571,7 @@ ShortestPath::ShortestPath(SharedStore& store)
 
 void ShortestPath::handleToggle() {
   store->setShowShortestPath(get_active());
-  store->getUpdateSignal().emit();
+  store->getUpdateSignal().emit(false);
 }
 
 /* == Selectors == */
@@ -657,61 +668,19 @@ void Viewport::onUpdate(SharedStore& store) {
 }
 
 bool Viewport::handlePress(const GdkEventButton* event) {
-  ScreenLocation pressLocation({(double)event->x, (double)event->y});
-  auto town(store->getTown());
   if (event->type != GDK_BUTTON_PRESS) return true;  // ignore double clicks
+  ScreenLocation pressLocation({(double)event->x, (double)event->y});
 
   switch (event->button) {
-    case LEFT_MOUSE: {
-      auto clickedNode(town->getNodeAt(toWorldSpace(pressLocation)));
-      if (clickedNode != NO_LINK) {
-        const unsigned selectedNode(town->getSelectedNode());
-        if (clickedNode == selectedNode) {
-          town->removeNode(clickedNode);
-        } else if (store->getEditLink() && selectedNode != NO_LINK) {
-          node::Link newLink({selectedNode, clickedNode});
-          try {
-            if (store->getTown()->hasLink(newLink)) {
-              store->getTown()->removeLink(newLink);
-            } else {
-              store->getTown()->addLink(newLink);
-            }
-          } catch (std::string err) {
-            showErrorDialog(window, "Could not modify link", err);
-          }
-        } else {
-          town->selectNode(clickedNode);
-        }
-      } else if (town->getSelectedNode() == NO_LINK) {
-        try {
-          town->addNode(node::Node(store->getSelectedNode(), town->availableUid(),
-                                   toWorldSpace(pressLocation), MIN_CAPACITY),
-                        DIST_MIN);
-        } catch (std::string& err) {
-          showErrorDialog(
-              window, "Could not create a node here",
-              "The position you chose intersected with another node or link.");
-        }
-      } else {
-        leftDragOrigin = pressLocation;
-        leftDragEnabled = true;
-      }
-    } break;
+    case LEFT_MOUSE:
+      handleLeftClick(pressLocation);
+      break;
 
-    case RIGHT_MOUSE: {
-      auto selectedNode(town->getSelectedNode());
-      if (selectedNode != NO_LINK) {
-        try {
-          town->moveNode(selectedNode, toWorldSpace(pressLocation));
-        } catch (std::string& err) {
-          showErrorDialog(window, "Could not move node",
-                          "The new position intersected with another node or link.");
-        }
-      }
-    } break;
+    case RIGHT_MOUSE:
+      handleRightClick(pressLocation);
+      break;
   }
 
-  store->getUpdateSignal().emit();
   queue_draw();
   return true;
 }
@@ -725,6 +694,7 @@ bool Viewport::handleRelease(const GdkEventButton* event) {
   if (releaseLocation.x == leftDragOrigin.x && releaseLocation.y == leftDragOrigin.y) {
     // Deselect the node
     town->selectNode(NO_LINK);
+    store->getUpdateSignal().emit(false);
   } else {
     // Resize the node
     auto selectedNode(town->getModifiableNode(town->getSelectedNode()));
@@ -741,6 +711,7 @@ bool Viewport::handleRelease(const GdkEventButton* event) {
       try {
         town->resizeNode(selectedNode->getUid(),
                          selectedNode->radius() + radiusDifference);
+        store->getUpdateSignal().emit(true);
       } catch (std::string& err) {
         selectedNode->setCapacity(oldCapacity);
         showErrorDialog(window, "Could not resize node",
@@ -749,10 +720,67 @@ bool Viewport::handleRelease(const GdkEventButton* event) {
     }
   }
 
-  leftDragEnabled = false;
-  store->getUpdateSignal().emit();
   queue_draw();
+  leftDragEnabled = false;
   return true;
+}
+
+void Viewport::handleLeftClick(const ScreenLocation& location) {
+  auto town(store->getTown());
+  bool doFullRender(true);
+
+  auto clickedNode(town->getNodeAt(toWorldSpace(location)));
+  if (clickedNode != NO_LINK) {
+    const unsigned selectedNode(town->getSelectedNode());
+    if (clickedNode == selectedNode) {
+      town->removeNode(clickedNode);
+    } else if (store->getEditLink() && selectedNode != NO_LINK) {
+      node::Link newLink({selectedNode, clickedNode});
+      try {
+        if (town->hasLink(newLink)) {
+          town->removeLink(newLink);
+        } else {
+          town->addLink(newLink);
+        }
+      } catch (std::string err) {
+        showErrorDialog(window, "Could not modify link", err);
+      }
+    } else {
+      town->selectNode(clickedNode);
+      doFullRender = false;
+    }
+  } else if (town->getSelectedNode() == NO_LINK) {
+    try {
+      town->addNode(node::Node(store->getSelectedNode(), town->availableUid(),
+                               toWorldSpace(location), MIN_CAPACITY),
+                    DIST_MIN);
+    } catch (std::string& err) {
+      showErrorDialog(window, "Could not create a node here",
+                      "The position you chose intersected with another node or link.");
+    }
+  } else {
+    leftDragOrigin = location;
+    leftDragEnabled = true;
+  }
+
+  store->getUpdateSignal().emit(doFullRender);
+}
+
+void Viewport::handleRightClick(const ScreenLocation& location) {
+  auto town(store->getTown());
+
+  auto selectedNode(town->getSelectedNode());
+  if (selectedNode != NO_LINK) {
+    try {
+      town->moveNode(selectedNode, toWorldSpace(location));
+
+    } catch (std::string& err) {
+      showErrorDialog(window, "Could not move node",
+                      "The new position intersected with another node or link.");
+    }
+  }
+
+  store->getUpdateSignal().emit(true);
 }
 
 tools::Vec2 Viewport::toWorldSpace(const ScreenLocation& location) {
@@ -790,7 +818,7 @@ Window::Window()
   add(view);
   show_all();
 
-  controller.getStore()->getUpdateSignal().emit();
+  controller.getStore()->getUpdateSignal().emit(true);
 }
 
 void Window::loadFile(const std::string& path) { controller.loadTown(path); }

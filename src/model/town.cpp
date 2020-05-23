@@ -78,6 +78,8 @@ double computeAccessTime(const NodeType& type0, const NodeType& type2,
 town::PathFindingResult generatePathResult(DijkstraGraph graph,
                                            unsigned destinationUid, double distance);
 bool nextGraphNode(DijkstraGraph graph, unsigned& nextUid);
+void dijkstraSortByDistance(const Town& town, const node::Node* currentNode,
+                            std::vector<unsigned>& neighbours);
 }  // namespace
 
 namespace town {
@@ -378,9 +380,10 @@ town::PathFindingResult Town::pathFind(unsigned originUid,
     currentGraphNode = graph.find(currentUid);
     currentDistance = currentGraphNode->second.distance;
     currentType = currentNode->getType();
+    auto neighbourNodes(getLinkedNodes(currentGraphNode->first));
 
     // Evaluate all graph neighbours
-    for (const auto& neighbourUid : getLinkedNodes(currentGraphNode->first)) {
+    for (const auto& neighbourUid : neighbourNodes) {
       graphNeighbour = graph.find(neighbourUid);
       if (graphNeighbour->second.visited) continue;
 
@@ -401,11 +404,25 @@ town::PathFindingResult Town::pathFind(unsigned originUid,
 
       // Mark production nodes as visited to deny through-access to other nodes
       if (neighbourType == node::PRODUCTION) graphNeighbour->second.visited = true;
-
-      // Return condition: verify the destination condition has been met
-      if (neighbourType == searchType)
-        return generatePathResult(graph, neighbourUid, neighbourDistance);
     }
+
+    bool targetFound(false);
+    unsigned targetUid;
+    double targetDistance(std::numeric_limits<double>::infinity());
+
+    // Find the closest matching node
+    for (const auto& neighbourUid : neighbourNodes) {
+      const node::NodeType type(nodes.find(neighbourUid)->second.getType());
+      const double distance(graph.find(neighbourUid)->second.distance);
+      if (type == searchType && distance < targetDistance) {
+        targetFound = true;
+        targetUid = neighbourUid;
+        targetDistance = distance;
+      }
+    }
+
+    // Return condition: verify the destination condition has been met
+    if (targetFound) return generatePathResult(graph, targetUid, targetDistance);
 
     // Mark the node as visited to progress the algorithm
     currentGraphNode->second.visited = true;
