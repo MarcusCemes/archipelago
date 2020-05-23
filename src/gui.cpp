@@ -356,6 +356,7 @@ Store::Store()
     : town(new town::Town()),
       selectedNode(node::HOUSING),
       zoomFactor(INITIAL_ZOOM),
+      editLink(false),
       showShortestPath(false) {}
 
 ActionSignal Store::getActionSignal() { return actionSignal; }
