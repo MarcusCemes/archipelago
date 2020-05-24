@@ -218,7 +218,7 @@ void Town::resizeNode(unsigned uid, unsigned newRadius) {
   }
 }
 
-void Town::addLink(const Link& link) {
+void Town::addLink(const Link& link, double safetyDistance) {
   // Check that the link doesn't already exist
   for (const auto& townLink : links) {
     if (townLink == link)
@@ -240,7 +240,7 @@ void Town::addLink(const Link& link) {
     }
   }
 
-  checkLinkSuperposition(link);
+  checkLinkSuperposition(link, safetyDistance);
 
   links.push_back(link);
 }
