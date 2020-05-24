@@ -1,4 +1,4 @@
-// archipelago v2.0.0 - architecture b2
+// archipelago v3.0.0 - architecture b2
 // constants.hpp - shared constants
 // Authors: Marcus Cemes, Alexandre Dodens
 

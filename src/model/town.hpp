@@ -1,4 +1,4 @@
-// archipelago v2.0.0 - architecture b2
+// archipelago v3.0.0 - architecture b2
 // town.hpp - town classes and functions
 // Authors: Marcus Cemes, Alexandre Dodens
 
@@ -79,7 +79,7 @@ class Town : public tools::Renderable {
    * Adds a link to the town
    * @throws If the link's nodes are not a part of the town, or a superposition occurs
    */
-  void addLink(const node::Link& link);
+  void addLink(const node::Link& link, double safetyDistance = 0.);
 
   /** Whether the town contains a certain link between nodes (uid order-independent) */
   bool hasLink(const node::Link& link) const;

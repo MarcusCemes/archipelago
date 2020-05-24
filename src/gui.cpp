@@ -1,4 +1,4 @@
-// archipelago v2.0.0 - architecture b2
+// archipelago v3.0.0 - architecture b2
 // gui.cpp - user interaction
 // Authors: Marcus Cemes, Alexandre Dodens
 
@@ -258,7 +258,7 @@ class Selectors : public Gtk::Box {
 
  private:
   SharedStore store;
-  Gtk::RadioButton housing, production, transport;
+  Gtk::RadioButton housing, transport, production;
   void handleChange();
 };
 
@@ -581,10 +581,10 @@ Selectors::Selectors(SharedStore& store)
     : Box(Gtk::ORIENTATION_VERTICAL),
       store(store),
       housing("Housing"),
-      production("Production"),
-      transport("Transport") {
-  production.join_group(housing);
+      transport("Transport"),
+      production("Production") {
   transport.join_group(housing);
+  production.join_group(housing);
   housing.set_active();
 
   housing.signal_toggled().connect(sigc::mem_fun(*this, &Selectors::handleChange));
@@ -592,8 +592,8 @@ Selectors::Selectors(SharedStore& store)
   production.signal_toggled().connect(sigc::mem_fun(*this, &Selectors::handleChange));
 
   pack_start(housing);
-  pack_start(production);
   pack_start(transport);
+  pack_start(production);
 }
 
 void Selectors::handleChange() {
@@ -741,7 +741,7 @@ void Viewport::handleLeftClick(const ScreenLocation& location) {
         if (town->hasLink(newLink)) {
           town->removeLink(newLink);
         } else {
-          town->addLink(newLink);
+          town->addLink(newLink, DIST_MIN);
         }
       } catch (std::string err) {
         showErrorDialog(window, "Could not modify link", err);
